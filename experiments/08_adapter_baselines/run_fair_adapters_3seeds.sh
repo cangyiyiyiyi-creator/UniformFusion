@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-SAVE_ROOT="${SAVE_ROOT:-$ROOT/论文补充验证_20260907/02_公平Adapter基线/run_20260907_fair_adapters_3seeds}"
+SAVE_ROOT="${SAVE_ROOT:-$ROOT/supplementary_verification_20260907/02_fair_adapter_baselines/run_20260907_fair_adapters_3seeds}"
 SEEDS=(930163947 1786430941 553800223)
 METHODS=(DAGNet_OfficialArchitecture MLDecoder_DualView)
 mkdir -p "$SAVE_ROOT"

@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(
-    "论文补充验证_20260907/02_公平Adapter基线/"
+    "supplementary_verification_20260907/02_fair_adapter_baselines/"
     "run_20260907_fair_adapters_3seeds"
 )
 METHODS = (

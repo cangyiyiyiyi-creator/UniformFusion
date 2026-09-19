@@ -8,7 +8,7 @@ authors:
   - family-names: Dai
     given-names: Chengyu
     email: cangyiyiyiyi@gmail.com
-    # Chinese name as it appears in the manuscript: 代程宇
+    # Chinese name as it appears in the manuscript: Chengyu Dai
 # TODO: once the paper is formally published, add the remaining authors, the
 #       venue and the DOI, and add a `preferred-citation` entry for the paper.
 repository-code: "https://github.com/cangyiyiyiyi-creator/UniformFusion"

@@ -39,7 +39,7 @@ def main() -> None:
     weak_indices = [i for i, name in enumerate(classes) if name in WEAK_CLASSES]
     rows = []
     for mode in MODES:
-        for path in sorted((root / "01_视角消融" / mode).glob("seed_*/Uniform_Fusion.json")):
+        for path in sorted((root / "01_view_ablation" / mode).glob("seed_*/Uniform_Fusion.json")):
             payload = json.loads(path.read_text(encoding="utf-8"))
             if payload.get("requested_view_mode") != mode:
                 raise RuntimeError(f"View-mode mismatch: {path}")
@@ -60,7 +60,7 @@ def main() -> None:
     expected = len(MODES) * args.expected_seeds
     if len(rows) != expected:
         raise RuntimeError(f"Expected {expected} evaluations, found {len(rows)}")
-    detailed = root / "03_汇总" / "UniformFusion_双视角消融_逐seed.csv"
+    detailed = root / "03_summary" / "UniformFusion_view_ablation_per_seed.csv"
     detailed.parent.mkdir(parents=True, exist_ok=True)
     with detailed.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
@@ -90,7 +90,7 @@ def main() -> None:
                 "weak_class_mAP_std_sample": sample_std(weak),
             }
         )
-    summary_path = root / "03_汇总" / "UniformFusion_双视角消融_汇总.csv"
+    summary_path = root / "03_summary" / "UniformFusion_view_ablation_summary.csv"
     with summary_path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(summary[0]))
         writer.writeheader()

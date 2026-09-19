@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$ROOT"
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-SAVE_ROOT="${SAVE_ROOT:-$ROOT/论文补充验证_20260907/02B_DAGNet_Batch32复核/run_20260907_dagnet_batch32_3seeds}"
+SAVE_ROOT="${SAVE_ROOT:-$ROOT/supplementary_verification_20260907/02B_dagnet_batch32_recheck/run_20260907_dagnet_batch32_3seeds}"
 SEEDS=(930163947 1786430941 553800223); mkdir -p "$SAVE_ROOT"
 printf 'method=DAGNet_OfficialArchitecture\nphysical_batch_size=16\ngradient_accumulation=2\neffective_batch_size=32\ninput_size=256\nselection=all_Val_then_locked_Test\nreplaces_batch16_only_if_complete=true\n' > "$SAVE_ROOT/protocol.txt"
 for phase in val test; do

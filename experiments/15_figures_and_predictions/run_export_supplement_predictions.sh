@@ -5,8 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PYTHON="${PYTHON:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-SUPPLEMENT="$ROOT/论文补充验证_20260907"
-PRED_ROOT="$SUPPLEMENT/07_复现源码与样本级预测/04_样本级预测/DvXray"
+SUPPLEMENT="$ROOT/supplementary_verification_20260907"
+PRED_ROOT="$SUPPLEMENT/07_repro_source_and_sample_predictions/04_sample_predictions/DvXray"
 LIST="annotations/DvXray_test.txt"
 CLASSES="annotations/classes.txt"
 
@@ -60,37 +60,37 @@ for index in "${!seeds[@]}"; do
 
   export_one \
     UF_NoAux "$seed" \
-    "$SUPPLEMENT/01_UF_NoAux三种子/run_20260907_uf_noaux_3seeds/resnet50/seed_$seed/repeat_$repeat/UF_NoAux" \
+    "$SUPPLEMENT/01_uf_noaux_3seeds/run_20260907_uf_noaux_3seeds/resnet50/seed_$seed/repeat_$repeat/UF_NoAux" \
     32
 
   export_one \
     DAGNet_OfficialArchitecture_EffectiveBatch32 "$seed" \
-    "$SUPPLEMENT/02B_DAGNet_Batch32复核/run_20260907_dagnet_batch32_3seeds/dagnet_official_adapter/seed_$seed/repeat_$repeat/DAGNet_OfficialArchitecture" \
+    "$SUPPLEMENT/02B_dagnet_batch32_recheck/run_20260907_dagnet_batch32_3seeds/dagnet_official_adapter/seed_$seed/repeat_$repeat/DAGNet_OfficialArchitecture" \
     16
 
   export_one \
     MLDecoder_DualView "$seed" \
-    "$SUPPLEMENT/02_公平Adapter基线/run_20260907_fair_adapters_3seeds/resnet50_ml_decoder_adapter/seed_$seed/repeat_$repeat/MLDecoder_DualView" \
+    "$SUPPLEMENT/02_fair_adapter_baselines/run_20260907_fair_adapters_3seeds/resnet50_ml_decoder_adapter/seed_$seed/repeat_$repeat/MLDecoder_DualView" \
     32
 
   export_one \
     Plain_BCE_OL_Only "$seed" \
-    "$SUPPLEMENT/04_独立单视角训练/run_20260907_single_view_plain/resnet50/seed_$seed/repeat_$repeat/Plain_BCE_OL_Only" \
+    "$SUPPLEMENT/04_single_view_training/run_20260907_single_view_plain/resnet50/seed_$seed/repeat_$repeat/Plain_BCE_OL_Only" \
     32
 
   export_one \
     Plain_BCE_SD_Only "$seed" \
-    "$SUPPLEMENT/04_独立单视角训练/run_20260907_single_view_plain/resnet50/seed_$seed/repeat_$repeat/Plain_BCE_SD_Only" \
+    "$SUPPLEMENT/04_single_view_training/run_20260907_single_view_plain/resnet50/seed_$seed/repeat_$repeat/Plain_BCE_SD_Only" \
     32
 
   export_one \
     UF_NoCorrection "$seed" \
-    "$SUPPLEMENT/05_残差机制对照/run_20260907_residual_ablation/resnet50/seed_$seed/repeat_$repeat/UF_NoCorrection" \
+    "$SUPPLEMENT/05_residual_ablation/run_20260907_residual_ablation/resnet50/seed_$seed/repeat_$repeat/UF_NoCorrection" \
     32
 
   export_one \
     UF_NoRamp "$seed" \
-    "$SUPPLEMENT/05_残差机制对照/run_20260907_residual_ablation/resnet50/seed_$seed/repeat_$repeat/UF_NoRamp" \
+    "$SUPPLEMENT/05_residual_ablation/run_20260907_residual_ablation/resnet50/seed_$seed/repeat_$repeat/UF_NoRamp" \
     32
 done
 

@@ -40,7 +40,7 @@ def class_names(root, dataset):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--archive", default="论文最终归档_20260830")
+    parser.add_argument("--archive", default="paper_archive_20260830")
     parser.add_argument("--output", required=True)
     parser.add_argument("--shuffle-repeats", type=int, default=20)
     args = parser.parse_args()
@@ -48,7 +48,7 @@ def main():
     archive, output = root / args.archive, Path(args.output)
     if not output.is_absolute():
         output = root / output
-    pred_root = archive / "08_真实可视化与PR曲线_20260902/01_样本级预测"
+    pred_root = archive / "08_visualisation_and_pr_curves_20260902/01_sample_predictions"
     run_rows, class_rows, tie_rows = [], [], []
     rng = np.random.default_rng(20260905)
 

@@ -11,9 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "runs_fair_fusion_baselines/run_20260903_fair_fusion_3seeds"
-ARCHIVE = ROOT / "论文最终归档_20260830"
-TARGET = ARCHIVE / "15_公平融合基线_20260904"
-TABLE_DIR = ARCHIVE / "06_最终论文资料_20260831/04_论文表格"
+ARCHIVE = ROOT / "paper_archive_20260830"
+TARGET = ARCHIVE / "15_fair_fusion_baselines_20260904"
+TABLE_DIR = ARCHIVE / "06_final_paper_materials_20260831/04_paper_tables"
 SEEDS = (930163947, 1786430941, 553800223)
 REPEATS = {930163947: 1, 1786430941: 2, 553800223: 3}
 METHODS = {
@@ -42,9 +42,9 @@ def load_metrics(path):
 
 def reference_metrics(kind, seed):
     if kind == "Plain-BCE":
-        directory = ARCHIVE / f"03_基线与消融模型/Plain_BCE__ResNet50__seed_{seed}"
+        directory = ARCHIVE / f"03_baseline_and_ablation_models/Plain_BCE__ResNet50__seed_{seed}"
     else:
-        directory = ARCHIVE / f"02_UniformFusion主方法模型/UniformFusion__ResNet50__seed_{seed}"
+        directory = ARCHIVE / f"02_uniform_fusion_main_models/UniformFusion__ResNet50__seed_{seed}"
     return load_metrics(directory / "test_metrics.json")
 
 
@@ -101,7 +101,7 @@ def main():
             }
             detailed.append(row)
             rows.append(metrics)
-            evidence_dir = TARGET / "01_原始证据" / f"seed_{seed}" / method_dir
+            evidence_dir = TARGET / "01_raw_evidence" / f"seed_{seed}" / method_dir
             for name in (
                 "checkpoint_best.pth",
                 "training_log.csv",
@@ -161,7 +161,7 @@ def main():
         encoding="utf-8",
     )
 
-    table8 = TABLE_DIR / "表8_DvXray公平主对比_已有结果.csv"
+    table8 = TABLE_DIR / "table8_dvxray_fair_comparison_existing_results.csv"
     with table8.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
         fields = handle.readline() if False else list(rows[0])
@@ -185,7 +185,7 @@ def main():
         })
     write_csv(table8, fields, rows)
 
-    table6 = TABLE_DIR / "表6_公开SOTA与公平基线_协议分层对比.csv"
+    table6 = TABLE_DIR / "table6_public_sota_vs_fair_baselines_protocol_stratified.csv"
     with table6.open(newline="", encoding="utf-8") as handle:
         rows6 = list(csv.DictReader(handle))
         fields6 = list(rows6[0])
@@ -206,7 +206,7 @@ def main():
         })
     write_csv(table6, fields6, rows6)
 
-    code_dir = TARGET / "02_协议与代码"
+    code_dir = TARGET / "02_protocol_and_code"
     for source_file in (
         ROOT / "run_fair_fusion_baselines_3seeds.sh",
         ROOT / "run_fair_fusion_baselines_test_3seeds.sh",
@@ -222,14 +222,14 @@ def main():
 
     manifest_rows = []
     for path in sorted(TARGET.rglob("*")):
-        if path.is_file() and path.name != "文件清单与SHA256.csv":
+        if path.is_file() and path.name != "file_manifest_and_sha256.csv":
             manifest_rows.append({
                 "file": str(path.relative_to(TARGET)),
                 "size_bytes": path.stat().st_size,
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
             })
     write_csv(
-        TARGET / "文件清单与SHA256.csv",
+        TARGET / "file_manifest_and_sha256.csv",
         ("file", "size_bytes", "sha256"),
         manifest_rows,
     )

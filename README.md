@@ -30,7 +30,8 @@ pip install -r requirements.txt
 bash main.sh setup
 
 # 2) Point the split files at your own data root (see section 7.1)
-RELINK_FROM=/home/hfuu/桌面/convnextv2/data RELINK_TO=/path/to/your/DvXray_root bash main.sh relink
+#    first inspect the stored prefix:  head -1 data_splits/DvXray/DvXray_train.txt
+RELINK_FROM='<original prefix>' RELINK_TO=/data/DvXray bash main.sh relink
 
 # 3) Preflight (interpreter / dependencies / CUDA, locked-source and split SHA256, dataset accessibility)
 bash main.sh preflight
@@ -52,7 +53,7 @@ SIXray and CUB cross-dataset runs, the p16–p20 candidate-head ablations, learn
 best-route selection, etc.) are deliberately excluded.
 
 **Provenance**: everything is taken from the frozen snapshot of the paper archive
-`论文最终归档_20260830/`.
+`paper_archive_20260830/`.
 
 ---
 
@@ -208,7 +209,7 @@ training set drawn with seed 20260901).
 | **Uniform Fusion** (main method) | `Final_NoAnchor_NoRouter` | `--plain_innovation_use_learned_router false` and `--plain_innovation_route_weight 0.0` |
 | Learned Router (historical variant, not used in the paper) | `Final_NoAnchor` | `use_learned_router true`, `route_weight 0.05` |
 
-Evidence from the result archive (`04_原始结果表/06_UniformFusion主方法_n5/README.md`, quoted verbatim):
+Evidence from the result archive (`04_original_result_tables/06_uniform_fusion_main_n5/README.md`, quoted verbatim):
 "`Final_NoAnchor` in these tables denotes the historical, complete Learned Router variant;
 `Uniform_Fusion` is the current main method."
 
@@ -260,7 +261,7 @@ The `protocol_*.txt` file inside each directory is the original protocol record 
 A real example (DvXray):
 
 ```text
-/home/hfuu/桌面/convnextv2/data/DvXray_Positive_Samples/P03152_OL.png .../P03152_SD.png 0,0,0,0,0,0,0,0,0,0,0,0,0,1,0
+<DvXray_data_root>/DvXray_Positive_Samples/P03152_OL.png .../P03152_SD.png 0,0,0,0,0,0,0,0,0,0,0,0,0,1,0
 ```
 
 - `K` = `--num_classes`: 15 for DvXray, 12 for LDXray;
@@ -285,15 +286,21 @@ bash main.sh setup      # → core/annotations/{classes.txt,DvXray_*.txt} and co
 ```
 
 **⑤ Fix the paths inside the lists** (mandatory, otherwise the DataLoader will not find the images).
-The split files store the original machine's absolute paths; pick either approach:
+The split files store the original machine's absolute paths. Inspect the prefix and rewrite it:
 
 ```bash
-# Recommended: bulk prefix replacement (originals backed up as *.txt.orig)
-RELINK_FROM=/home/hfuu/桌面/convnextv2/data  RELINK_TO=/data/DvXray bash main.sh relink
-RELINK_FROM=/home/hfuu/桌面/LDXRAY-20260901/dataset_clean  RELINK_TO=/data/LDXray bash main.sh relink
+# 1) look at the prefix stored in the manifests
+head -1 core/annotations/DvXray_train.txt
 
-# Or manually: sed -i 's#old_prefix#new_prefix#g' core/annotations/DvXray_*.txt
+# 2) rewrite that prefix to your own data root (originals are backed up as *.txt.orig)
+RELINK_FROM='<original prefix read above>'  RELINK_TO=/data/DvXray bash main.sh relink
+RELINK_FROM='<original LDXray prefix>'      RELINK_TO=/data/LDXray bash main.sh relink
+
+# or by hand: sed -i 's#<old prefix>#<new prefix>#g' core/annotations/DvXray_*.txt
 ```
+
+For the LDXray runners (`experiments/02_LDXray_cross_dataset/*.sh`) the dataset root defaults to the
+relative `./data/LDXray`; pass `DATASET_ROOT=/your/path` if your images live elsewhere.
 
 `preflight` samples the first 20 lines of every list and fails with an actionable message when the images
 cannot be reached.
@@ -550,7 +557,7 @@ Files added on top of the frozen archive: `main.sh`, `LICENSE`, `CITATION.cff`, 
 **① Helper scripts have been restored from the archive.** The original frozen package was missing 24 tools
 referenced by the group scripts (smoke tests, summarisation, figure building, the strict AHCR protocol
 adapter). This release restores them into `core/tools/` from the paper archive
-(`论文最终归档_20260830/05_运行配置与代码/tools/` and the original project's `tools/` snapshot). Verified:
+(`paper_archive_20260830/05_run_config_and_code/tools/` and the original project's `tools/` snapshot). Verified:
 
 - all 24 files compile, and the tool chain they reference has no unresolved imports;
 - 10 of them already had a copy inside the frozen package (in the corresponding experiment group); those
@@ -568,6 +575,33 @@ only for navigation.
 
 **④ One disclosed protocol deviation exists for LDXray**: its first seed was evaluated on the test set
 before the remaining seeds; the paper states this explicitly.
+
+**⑤ Archive-side tools expect the paper archive inside the repository.** 31 files — most of
+`core/tools/` plus several `experiments/` group scripts (`03`, `05`, `07`, `08`, `09`, `10`, `11`, `13`,
+`14`, `15`) — read the paper archive and its supplementary runs, for example
+`paper_archive_20260830/05_run_config_and_code/...`. All directory names were translated to English for
+this release, so if you have the archive, place (or symlink) it at the repository root:
+
+```text
+<repo_root>/
+├── paper_archive_20260830/
+│   ├── 02_uniform_fusion_main_models/            # main-method checkpoints
+│   ├── 03_baseline_and_ablation_models/          # baseline / ablation checkpoints
+│   ├── 05_run_config_and_code/                   # the locked sources
+│   ├── 06_final_paper_materials_20260831/04_paper_tables/
+│   ├── 07_ldxray_cross_dataset_20260902/03_best_models/
+│   ├── 08_visualisation_and_pr_curves_20260902/
+│   └── 15_fair_fusion_baselines_20260904/
+├── supplementary_verification_20260905/
+└── supplementary_verification_20260907/
+```
+
+The paths are constructed relative to the repository root (`ROOT / "paper_archive_20260830"`), and
+`core/tools/analyze_uniform_internal_evidence.py` additionally accepts `--archive <dir>`.
+
+> **`main.sh`, training, evaluation and the checkpoint-protocol check do not need the archive** — the main
+> method can be reproduced from this repository alone (§7.2). Only the archive/aggregation, figure-building
+> and a few group scripts depend on it.
 
 ---
 
@@ -617,7 +651,7 @@ Software entry (ready to cite from the paper or a README):
 }
 ```
 
-- This repository is released under the **MIT License** (see `LICENSE`), copyright 2026 Chengyu Dai (代程宇);
+- This repository is released under the **MIT License** (see `LICENSE`), copyright 2026 Chengyu Dai (Chengyu Dai);
   it covers `core/`, `experiments/` and `main.sh`.
 - `experiments/08_adapter_baselines/third_party/` contains verbatim snapshots of upstream official
   implementations (DAGNet, ML-Decoder). Their copyright and license remain with the original authors and

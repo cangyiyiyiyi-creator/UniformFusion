@@ -4,7 +4,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "${ROOT_DIR}"
 PYTHON_BIN="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
 RUN_ID="${RUN_ID:-run_20260901_ldxray_uniform_3seeds}"
 SAVE_ROOT="${SAVE_ROOT:-./runs_ldxray_uniform/${RUN_ID}}"
-DATASET_ROOT="${DATASET_ROOT:-/home/hfuu/桌面/LDXRAY-20260901/dataset_clean}"
+DATASET_ROOT="${DATASET_ROOT:-./data/LDXray}"
 SEEDS=(930163947 1786430941 553800223)
 METHODS=(Plain_BCE Uniform_Fusion)
 mkdir -p "${SAVE_ROOT}" annotations/ldxray

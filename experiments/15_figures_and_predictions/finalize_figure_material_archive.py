@@ -28,7 +28,7 @@ def main():
     parser.add_argument("--root", required=True)
     args = parser.parse_args()
     root = Path(args.root)
-    prediction_manifests = sorted(root.glob("01_样本级预测/*/*/seed_*/prediction_manifest.json"))
+    prediction_manifests = sorted(root.glob("01_sample_predictions/*/*/seed_*/prediction_manifest.json"))
     if len(prediction_manifests) != 16:
         raise RuntimeError(f"Expected 16 prediction exports, found {len(prediction_manifests)}")
     manifest_payloads = [json.loads(path.read_text(encoding="utf-8")) for path in prediction_manifests]
@@ -39,8 +39,8 @@ def main():
     case_counts = {}
     heatmap_counts = {}
     for dataset in ("DvXray", "LDXray"):
-        selections = read_csv(root / "03_成功失败案例" / dataset / "selection_manifest.csv")
-        heatmaps = read_csv(root / "04_区域热图" / dataset / "heatmap_manifest.csv")
+        selections = read_csv(root / "03_success_failure_cases" / dataset / "selection_manifest.csv")
+        heatmaps = read_csv(root / "04_region_heatmaps" / dataset / "heatmap_manifest.csv")
         if len(selections) != len(heatmaps):
             raise RuntimeError(
                 f"Selection/heatmap count mismatch for {dataset}: "
@@ -80,7 +80,7 @@ This directory was produced by pure inference on the locked test split with the 
 """
     (root / "README.md").write_text(readme, encoding="utf-8")
 
-    manifest_path = root / "文件清单与SHA256.csv"
+    manifest_path = root / "file_manifest_and_sha256.csv"
     rows = []
     for path in sorted(root.rglob("*")):
         if path.is_file() and path != manifest_path:

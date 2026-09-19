@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$ROOT"
 export CUBLAS_WORKSPACE_CONFIG=:4096:8 PYTORCH_ALLOC_CONF=expandable_segments:True HF_HUB_OFFLINE=1
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-SAVE_ROOT="${SAVE_ROOT:-$ROOT/论文补充验证_20260907/04_独立单视角训练/run_20260907_single_view_plain}"
+SAVE_ROOT="${SAVE_ROOT:-$ROOT/supplementary_verification_20260907/04_single_view_training/run_20260907_single_view_plain}"
 SEEDS=(930163947 1786430941 553800223); METHODS=(Plain_BCE_OL_Only Plain_BCE_SD_Only)
 mkdir -p "$SAVE_ROOT"
 printf 'methods=%s\nmeaning=independent_training_with_selected_view_replicated_to_shared_dual_branches\nselection=all_Val_then_locked_Test\n' "${METHODS[*]}" > "$SAVE_ROOT/protocol.txt"

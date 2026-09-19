@@ -2,9 +2,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$ROOT"
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-PREREQ_ROOT="${PREREQ_ROOT:-$ROOT/论文补充验证_20260905/06_首批9组训练结果/run_20260905_first_batch}"
+PREREQ_ROOT="${PREREQ_ROOT:-$ROOT/supplementary_verification_20260905/06_first_batch_9runs_results/run_20260905_first_batch}"
 [[ -f "$PREREQ_ROOT/suite_complete.marker" ]] || { echo "First-batch 9-run suite is not complete: $PREREQ_ROOT"; exit 2; }
-SAVE_ROOT="${SAVE_ROOT:-$ROOT/论文补充验证_20260905/07_UF_GAP三种子/run_20260906_uf_gap_3seeds}"
+SAVE_ROOT="${SAVE_ROOT:-$ROOT/supplementary_verification_20260905/07_uf_gap_3seeds/run_20260906_uf_gap_3seeds}"
 mkdir -p "$SAVE_ROOT"
 SEEDS=(930163947 1786430941 553800223)
 {

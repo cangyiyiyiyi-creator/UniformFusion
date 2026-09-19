@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$ROOT"
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-SAVE_ROOT="${SAVE_ROOT:-$ROOT/论文补充验证_20260907/03_ValOnly参数敏感性/run_20260907_val_sensitivity}"
+SAVE_ROOT="${SAVE_ROOT:-$ROOT/supplementary_verification_20260907/03_valonly_sensitivity/run_20260907_val_sensitivity}"
 SEED=930163947
 METHODS=(UF_K4 UF_K16 UF_Temp010 UF_Temp040 UF_GammaMax002 UF_GammaMax010)
 mkdir -p "$SAVE_ROOT"

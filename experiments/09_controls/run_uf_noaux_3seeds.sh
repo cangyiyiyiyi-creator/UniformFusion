@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-SAVE_ROOT="${SAVE_ROOT:-$ROOT/论文补充验证_20260907/01_UF_NoAux三种子/run_20260907_uf_noaux_3seeds}"
+SAVE_ROOT="${SAVE_ROOT:-$ROOT/supplementary_verification_20260907/01_uf_noaux_3seeds/run_20260907_uf_noaux_3seeds}"
 SEEDS=(930163947 1786430941 553800223)
 mkdir -p "$SAVE_ROOT"
 

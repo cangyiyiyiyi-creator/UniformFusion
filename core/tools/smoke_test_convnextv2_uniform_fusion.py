@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LOCKED_CODE = ROOT / "论文最终归档_20260830" / "05_运行配置与代码"
+LOCKED_CODE = ROOT / "paper_archive_20260830" / "05_run_config_and_code"
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(LOCKED_CODE))
 

@@ -27,7 +27,7 @@ TRAIN_LIST="${TRAIN_LIST:-annotations/DvXray_train.txt}"
 VAL_LIST="${VAL_LIST:-annotations/DvXray_val.txt}"
 TEST_LIST="${TEST_LIST:-annotations/DvXray_test.txt}"
 CLASSES_FILE="${CLASSES_FILE:-annotations/classes.txt}"
-LOCKED_MAIN_FINETUNE_SCRIPT="${LOCKED_MAIN_FINETUNE_SCRIPT:-${ROOT_DIR}/论文最终归档_20260830/05_运行配置与代码/main_finetune.py}"
+LOCKED_MAIN_FINETUNE_SCRIPT="${LOCKED_MAIN_FINETUNE_SCRIPT:-${ROOT_DIR}/paper_archive_20260830/05_run_config_and_code/main_finetune.py}"
 VALIDATION_PHASE_MARKER="${VALIDATION_PHASE_MARKER:-${SAVE_ROOT}/validation_phase_complete.marker}"
 
 case "${PHASE}" in val|test) ;; *) echo "PHASE must be val or test"; exit 2 ;; esac

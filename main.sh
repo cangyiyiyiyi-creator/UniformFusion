@@ -477,7 +477,7 @@ cmd_relink() {
   local from="${RELINK_FROM:-}" to="${RELINK_TO:-}"
   if [[ -z "${from}" || -z "${to}" ]]; then
     die "relink needs both the original prefix and the local path
-  e.g. RELINK_FROM=/home/hfuu/桌面/convnextv2/data RELINK_TO=/data/DvXray bash main.sh relink"
+  e.g. RELINK_FROM=<DvXray_data_root> RELINK_TO=/data/DvXray bash main.sh relink"
   fi
   log "rewriting annotation path prefix: ${from} -> ${to}"
   if is_dry; then

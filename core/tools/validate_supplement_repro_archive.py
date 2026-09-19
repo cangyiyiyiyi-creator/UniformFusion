@@ -190,11 +190,11 @@ def main() -> None:
             f"!= {args.expected_predictions}"
         )
     required_directories = (
-        "00_归档工具",
-        "01_Adapter源码",
-        "02_梯度累积源码",
-        "03_流水线测速源码",
-        "04_样本级预测",
+        "00_archive_tools",
+        "01_adapter_source",
+        "02_grad_accum_source",
+        "03_pipeline_profiling_source",
+        "04_sample_predictions",
     )
     for relative in required_directories:
         if not (root / relative).is_dir():

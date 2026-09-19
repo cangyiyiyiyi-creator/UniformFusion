@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from main_finetune import build_model, get_args_parser, set_seed
 
-out = Path("论文补充验证_20260907/02B_DAGNet_Batch32复核/preflight_batch32.json")
+out = Path("supplementary_verification_20260907/02B_dagnet_batch32_recheck/preflight_batch32.json")
 out.parent.mkdir(parents=True, exist_ok=True)
 set_seed(20260907, deterministic=True)
 args = get_args_parser().parse_args([

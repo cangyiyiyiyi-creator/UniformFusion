@@ -114,8 +114,8 @@ def main():
 
     global_summary = []
     for dataset, config in CONFIGS.items():
-        dataset_pr = output_root / "02_PR曲线" / dataset
-        dataset_cases = output_root / "03_成功失败案例" / dataset
+        dataset_pr = output_root / "02_pr_curves" / dataset
+        dataset_cases = output_root / "03_success_failure_cases" / dataset
         dataset_pr.mkdir(parents=True, exist_ok=True)
         dataset_cases.mkdir(parents=True, exist_ok=True)
 

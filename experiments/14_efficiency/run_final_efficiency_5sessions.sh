@@ -3,13 +3,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 PY="${PYTHON_BIN:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
-OUT="${OUT:-$ROOT/论文补充验证_20260907/06_效率5Session}"
+OUT="${OUT:-$ROOT/supplementary_verification_20260907/06_efficiency_5sessions}"
 RAW="$OUT/raw"
 PIPELINE="$OUT/pipeline_raw"
 mkdir -p "$RAW" "$PIPELINE"
-FAIR="$ROOT/论文补充验证_20260907/02_公平Adapter基线/run_20260907_fair_adapters_3seeds"
-PLAIN="$ROOT/论文最终归档_20260830/03_基线与消融模型/Plain_BCE__ResNet50__seed_930163947/checkpoint_best.pth"
-UNIFORM="$ROOT/论文最终归档_20260830/02_UniformFusion主方法模型/UniformFusion__ResNet50__seed_930163947/checkpoint_best.pth"
+FAIR="$ROOT/supplementary_verification_20260907/02_fair_adapter_baselines/run_20260907_fair_adapters_3seeds"
+PLAIN="$ROOT/paper_archive_20260830/03_baseline_and_ablation_models/Plain_BCE__ResNet50__seed_930163947/checkpoint_best.pth"
+UNIFORM="$ROOT/paper_archive_20260830/02_uniform_fusion_main_models/UniformFusion__ResNet50__seed_930163947/checkpoint_best.pth"
 DAG=$(find "$FAIR/dagnet_official_adapter/seed_930163947" -name checkpoint_best.pth -print -quit)
 ML=$(find "$FAIR/resnet50_ml_decoder_adapter/seed_930163947" -name checkpoint_best.pth -print -quit)
 for item in "Plain_BCE|$PLAIN" "Uniform_Fusion|$UNIFORM" "DAGNet|$DAG" "ML_Decoder|$ML"; do

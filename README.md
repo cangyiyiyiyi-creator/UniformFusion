@@ -637,21 +637,7 @@ Manuscript: *Class-Conditioned Multi-Scale Regional Learning for Dual-View X-Ray
 (`UniformFusion_submission_revision_20260919_tablebold.pdf`). Please add the venue and DOI once the paper
 is formally published.
 
-Software entry (ready to cite from the paper or a README):
-
-```bibtex
-@software{uniformfusion2026,
-  title     = {UniformFusion: Class-Conditioned Multi-Scale Regional Learning
-               for Dual-View X-Ray Multi-Label Recognition},
-  author    = {Dai, Chengyu},
-  year      = {2026},
-  version   = {v1.1-paper},
-  license   = {MIT},
-  url       = {https://github.com/cangyiyiyiyi-creator/UniformFusion}
-}
-```
-
-- This repository is released under the **MIT License** (see `LICENSE`), copyright 2026 Chengyu Dai (Chengyu Dai);
+- This repository is released under the **MIT License** (see `LICENSE`), copyright 2026 Chengyu Dai;
   it covers `core/`, `experiments/` and `main.sh`.
 - `experiments/08_adapter_baselines/third_party/` contains verbatim snapshots of upstream official
   implementations (DAGNet, ML-Decoder). Their copyright and license remain with the original authors and

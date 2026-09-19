@@ -9,14 +9,16 @@
 #
 # Columns: <sha256 of the original v1.0-paper file>  <sha256 of the current file>  <path>
 # Files that are not listed below are byte-identical to the original snapshot.
+# `SHA256SUMS.txt` and `HASH_MAPPING.txt` are deliberately excluded from the table below:
+# they hash each other, so no self-consistent pair of values exists. For those two files the
+# manifest in `SHA256SUMS.txt` is authoritative (regenerate it last).
 # Generated: 2026-09-19
 #
 27e2babea6459139cc55d2028269d569bbf5a7748b41f21def1ee7ac36f45d54  23d6501c3603f0022538a56ecbb74a81c9d092bb1d0e76ea88a4aaefefb1f3de  .gitignore
 7a98e15538fab0f2292245a2c02df678d5dec061616f0c5d15c921ad4d662dad  c3b7844d6776455b4ca9f858e22b624d7cd658ba4b9c371d887405ca0ba1d426  CITATION.cff
 f58645f93735ca1c1e69ffe9b3a7c9b94846750391450206a008958aa0ca8a3e  b288f247e7e33c5f532b7674cdfac129db01f0afc27453729a93b55742cfcd09  LICENSE
-ae2d25cf1f43061dc78ffff680e8c7c75dd4499650321e498e369ffda3bfc887  1bc386e260e590e329ac225d4a905467f88298cb839c0bcad2813f74f0cdb1d5  README.md
+ae2d25cf1f43061dc78ffff680e8c7c75dd4499650321e498e369ffda3bfc887  286de801bac62c436e0b7ea645aa4ea3ac55fd461f62b87cc3380b1c57bca69f  README.md
 9870216605b52705ba311f3569077fc21bd8ed4d544f56ab03051c5603367aa9  cdd171b3b287ad10cb8a45e78a749037d545e732a4d1d01f838bf0234fb08c8e  SHA256SUMS.restored.txt
-7ec269c27af3de4e35c7bb2a7fe1fc1c286eff6fe762580c2e9c1c1fac9351b9  aea5b804c086853b789d9e5efa56bda650f30a0a6d13e338d51163eb8b663923  SHA256SUMS.txt
 48ae2214937417a4df730ede8efb52165cfd9b351401d3e472b2094bdaacdf39  cb64fd8c087f473caf33535cffdb7ecddd24b5499c283d04ab1fe429848b7368  core/datasets.py
 dbe37f44aee890644a3016012b1b240a18ddd933e09fadb18d0ea38e7c1140ff  3c41cc4b264b19ad26449ce30519451c6e8f4c7c6e54a81c735c188176a86cf7  core/engine_finetune.py
 d1ec51b1e44152db52def599d2185d02318786de2db1177bff3158b26ce1782d  e157ce6f264e9b2e8fa841bdc5958863a506966964850ceae961c735f963c2d0  core/main_finetune.py

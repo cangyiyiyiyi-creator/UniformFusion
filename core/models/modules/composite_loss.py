@@ -14,7 +14,7 @@ from .custom_losses.consistency_losses import (
 
 class CompositeLoss(nn.Module):
     """
-    一个统一的、智能的复合损失函数，用于“正常训练”模式。
+    A unified, self-configuring composite loss for the "normal training" mode.
     """
     def __init__(self, args):
         super().__init__()
@@ -28,7 +28,7 @@ class CompositeLoss(nn.Module):
                                 trainable=args.ge_trainable)
         elif args.base_loss == 'dals':
             self.base_criterion = DALSLoss(eps=args.dals_eps, gamma=args.dals_gamma)
-        # 1. 初始化基础监督损失
+        # 1. build the base supervised loss
         elif args.base_loss == 'focal':
             self.base_criterion = FocalLoss(gamma=args.focal_gamma)
         elif args.base_loss == 'asl':
@@ -46,22 +46,22 @@ class CompositeLoss(nn.Module):
         else:  # 'bce'
             self.base_criterion = nn.BCEWithLogitsLoss()
 
-        # 2. 初始化所有可选的一致性损失
+        # 2. build every optional consistency loss
         self.uncert_loss = UncertaintyConsistencyLoss() if args.use_uncertainty_loss else None
         self.chan_loss = ChannelAttentionConsistencyLoss() if args.use_channel_loss else None
         self.rel_loss = RelationalConsistencyLoss() if args.use_relational_loss else None
 
     def forward(self, model_outputs, targets):
-        # model_outputs 是您的 ConvNeXtV2Dual.forward 的原始返回
+        # model_outputs is the raw return value of ConvNeXtV2Dual.forward
         # e.g., {"logits": ..., "feats": {"A": ..., "B": ..., "fused": ...}}
 
         final_logits = model_outputs['logits']
         
-        # --- 1. 计算主损失 ---
+        # --- 1. compute the main loss ---
         total_loss = self.base_criterion(final_logits, targets)
 
-        # --- 2. 按需计算并累加所有辅助损失 ---
-        # 为了计算辅助损失，我们需要从模型输出中提取各种中间结果
+        # --- 2. compute and accumulate every auxiliary loss as needed ---
+        # auxiliary losses require various intermediate results from the model output
         if self.uncert_loss and all(k in model_outputs for k in ['A_logits','B_logits']):
             total_loss += self.args.uncertainty_lambda * self.uncert_loss(
                 model_outputs['A_logits'], model_outputs['B_logits'])
@@ -69,6 +69,6 @@ class CompositeLoss(nn.Module):
         if self.uncert_loss:
             total_loss += self.args.uncertainty_lambda * self.uncert_loss(logits_a, logits_b)
         
-        # ... (类似地为 channel_loss 和 relational_loss 添加计算) ...
+        # ... (add channel_loss and relational_loss in the same way) ...
         
         return total_loss

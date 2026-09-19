@@ -30,10 +30,10 @@ for p in sorted(r.rglob('test_metrics.json')):
  d=json.loads(p.read_text()); v=json.loads((p.parent/'val_metrics.json').read_text())
  rows.append({'seed':int(p.parents[2].name.split('_')[-1]),'val_mAP':v['stats']['mAP'],'test_mAP':d['stats']['mAP'],'checkpoint':str(p.parent/'checkpoint_best.pth')})
 if len(rows)!=3: raise RuntimeError(f'expected 3 results, got {len(rows)}')
-with (r/'UF_GAP_逐seed.csv').open('w',newline='',encoding='utf-8-sig') as f:
+with (r/'UF_GAP_per_seed.csv').open('w',newline='',encoding='utf-8-sig') as f:
  w=csv.DictWriter(f,fieldnames=rows[0]);w.writeheader();w.writerows(rows)
 vals=[x['test_mAP'] for x in rows]
-(r/'UF_GAP_汇总.txt').write_text(f'n=3\ntest_mAP={statistics.mean(vals):.6f}±{statistics.stdev(vals):.6f}\n')
+(r/'UF_GAP_summary.txt').write_text(f'n=3\ntest_mAP={statistics.mean(vals):.6f} ± {statistics.stdev(vals):.6f}\n')
 PY
 touch "$SAVE_ROOT/suite_complete.marker"
 echo "UF-GAP DONE: $SAVE_ROOT"

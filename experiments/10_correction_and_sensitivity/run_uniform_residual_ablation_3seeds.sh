@@ -23,12 +23,12 @@ r=Path(sys.argv[1]); rows=[]
 for p in sorted(r.rglob('test_metrics.json')):
  t=json.loads(p.read_text());v=json.loads((p.parent/'val_metrics.json').read_text());rows.append({'method':p.parent.name,'seed':int(p.parents[2].name.split('_')[-1]),'best_epoch':v['checkpoint_epoch'],'val_mAP':v['stats']['mAP'],'test_mAP':t['stats']['mAP']})
 if len(rows)!=6:raise RuntimeError(f'expected 6 results, got {len(rows)}')
-with (r/'残差对照_逐seed.csv').open('w',newline='',encoding='utf-8-sig') as f:
+with (r/'residual_ablation_per_seed.csv').open('w',newline='',encoding='utf-8-sig') as f:
  w=csv.DictWriter(f,fieldnames=rows[0]);w.writeheader();w.writerows(rows)
 s=[]
 for m in sorted({x['method'] for x in rows}):
  a=[x['test_mAP'] for x in rows if x['method']==m];s.append({'method':m,'n':3,'mean':statistics.mean(a),'std':statistics.stdev(a)})
-with (r/'残差对照_汇总.csv').open('w',newline='',encoding='utf-8-sig') as f:
+with (r/'residual_ablation_summary.csv').open('w',newline='',encoding='utf-8-sig') as f:
  w=csv.DictWriter(f,fieldnames=s[0]);w.writeheader();w.writerows(s)
 PY
 touch "$SAVE_ROOT/suite_complete.marker"

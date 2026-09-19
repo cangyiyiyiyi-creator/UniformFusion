@@ -106,7 +106,7 @@ class ConvNeXt(nn.Module):
             nn.init.constant_(m.bias, 0)
 
     def forward_features(self, x):
-        # 创建一个列表来存储每个 stage 后的特征图
+        # collect the feature map after every stage in a list
         features = []
         for i in range(4):
             x = self.downsample_layers[i](x)
@@ -116,7 +116,7 @@ class ConvNeXt(nn.Module):
 
     def forward(self, x):
         x = self.forward_features(x)
-        # 取最后一个 stage 的输出 (C5)，然后进行全局池化
+        # take the last stage output (C5) and apply global pooling
         out = self.norm(x[-1].mean([-2, -1]))
         return self.head(out)
 

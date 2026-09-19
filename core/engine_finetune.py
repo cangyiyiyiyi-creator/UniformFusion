@@ -1,5 +1,5 @@
 # engine_finetune.py
-# =============== 只用 EMA；兼容多种 batch 结构；评估可写 CSV；autocast 优先 BF16 ===============
+# =============== EMA only; tolerant to several batch layouts; evaluation can write CSV; autocast prefers BF16 ===============
 
 import os
 import csv
@@ -9,7 +9,7 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 
-# 从你的 utils.py 引入日志工具
+# log helpers imported from the project's utils.py
 from utils import MetricLogger, SmoothedValue
 
 
@@ -22,11 +22,11 @@ def _class_grad_strength(logits: th.Tensor,
                          pos_only: bool = True,
                          alpha: float = 0.75) -> th.Tensor:
     """
-    计算每个类别在本 batch 内的“有效梯度强度” G_c（不参与反传，仅统计）。
-    多标签 BCE 的一阶梯度对 logit 等于 |sigmoid(z) - y|：
-    - 正类：|σ(z)-1| = 1-σ(z)
-    - 负类：|σ(z)-0| = σ(z)
-    返回: [C] 张量
+    Compute the "effective gradient magnitude" G_c of every class within this batch (statistics only, no backprop).
+    For multi-label BCE the first-order gradient w.r.t. the logit equals |sigmoid(z) - y|:
+    - positive class: |sigmoid(z)-1| = 1-sigmoid(z)
+    - negative class: |sigmoid(z)-0| = sigmoid(z)
+    Returns: a [C] tensor
     """
     with th.no_grad():
         p = th.sigmoid(logits)                         # [B, C]
@@ -49,8 +49,8 @@ def _grad_var_from(logits: th.Tensor,
                    pos_only: bool = True,
                    alpha: float = 0.75) -> th.Tensor:
     """
-    计算类级有效梯度的方差（可加容忍带 band，处于 |diff|<=band 的不计入）。
-    返回标量张量（device/logits 同）。
+    Variance of the per-class effective gradients (an optional tolerance band ignores |diff|<=band).
+    Returns a scalar tensor (same device as logits).
     """
     with th.no_grad():
         g = _class_grad_strength(logits, target, pos_only=pos_only, alpha=alpha)  # [C]
@@ -62,12 +62,12 @@ def _grad_var_from(logits: th.Tensor,
     return reg
 
 
-# ----------------------------- EMA（可放 CPU） -----------------------------
+# ----------------------------- EMA (can live on CPU) -----------------------------
 class SimpleEMA:
     """
-    轻量 EMA：维护 '参数名 -> EMA张量' 的字典，可放在 CPU 上节省显存。
-    - update(model): 用 model 当前参数进行 EMA 更新
-    - copy_to(model): 将 EMA 权重拷到传入模型（常用于验证）
+    Lightweight EMA: keeps a dict of 'parameter name -> EMA tensor', can live on CPU to save GPU memory.
+    - update(model): EMA update from the model's current parameters
+    - copy_to(model): copy the EMA weights into the given model (typically before validation)
     """
     def __init__(self, model: nn.Module, decay: float = 0.9999, device: str = "cpu"):
         self.decay = float(decay)
@@ -100,14 +100,14 @@ class SimpleEMA:
                 msd[n].copy_(w.to(msd[n].device, dtype=msd[n].dtype))
 
 
-# ----------------------------- 辅助函数 -----------------------------
+# ----------------------------- helper functions -----------------------------
 def _unpack_samples(samples, device: th.device) -> Tuple[th.Tensor, Optional[th.Tensor], th.Tensor]:
     """
-    兼容 batch 结构：
+    Supported batch layouts:
     1) ((xa, xb), y)
     2) (xa, xb, y) / [xa, xb, y]
-    3) (xa, y)（单视角）
-    4) dict: {'img_a':..., 'img_b':..., 'target':...} 或 {'images':(xa,xb),'target':...}
+    3) (xa, y) (single view)
+    4) dict: {'img_a':..., 'img_b':..., 'target':...} or {'images':(xa,xb),'target':...}
     """
     xa = xb = target = None
 
@@ -1788,7 +1788,7 @@ def _evaluate_multilabel_ap(all_logits: th.Tensor,
     return ap_per_class, mAP
 
 
-# ----------------------------- 训练 / 验证 -----------------------------
+# ----------------------------- training / validation -----------------------------
 def train_one_epoch(
     model: nn.Module,
     criterion: nn.Module,
@@ -1796,7 +1796,7 @@ def train_one_epoch(
     optimizer: th.optim.Optimizer,
     device: th.device,
     epoch: int,
-    drop_path_rate: float = 0.0,  # 只占位，保持签名兼容
+    drop_path_rate: float = 0.0,  # placeholder only, keeps the signature compatible
     amp: bool = True,
     model_ema: Optional[SimpleEMA] = None,
     print_freq: int = 50,
@@ -1811,7 +1811,7 @@ def train_one_epoch(
 
     scaler = th.amp.GradScaler('cuda', enabled=amp)
 
-    # 优先 BF16；不可用再回落 FP16
+    # prefer BF16; fall back to FP16 when unavailable
     try:
         bf16_ok = th.cuda.is_bf16_supported()
     except Exception:
@@ -1827,12 +1827,12 @@ def train_one_epoch(
         with th.autocast(device_type='cuda', dtype=ac_dtype, enabled=amp):
             model_out, logits = _forward_outputs(model, xa, xb, drop_feats=True)
 
-            # --- 【CVPA/GSPF 修复版损失计算逻辑】---
-            # 关键原则：
-            # 1) loss_sup 只用于日志，必须绕开 GSPFRegularizedCriterion / DistillationLoss 外壳，
-            #    避免提前 pop/reset CVPA/GSPF cache。
-            # 2) total_loss 必须调用完整 criterion(...)，这样 CVPA/GSPF 正则才能加入，
-            #    并且每个 batch 后 cache 会被清空，防止显存持续上涨。
+            # --- [fixed CVPA/GSPF loss-computation logic] ---
+            # key principles:
+            # 1) loss_sup is for logging only; it must bypass the GSPFRegularizedCriterion / DistillationLoss wrapper
+            #    so the CVPA/GSPF cache is not popped/reset too early.
+            # 2) total_loss must call the full criterion(...) so the CVPA/GSPF regularisers are included
+            #    and the cache is cleared after every batch, preventing GPU memory from growing.
             is_distill = False
             try:
                 is_distill = 'student_inputs' in criterion.forward.__code__.co_varnames
@@ -1845,7 +1845,7 @@ def train_one_epoch(
             while hasattr(plain_criterion, 'base_criterion'):
                 plain_criterion = plain_criterion.base_criterion
 
-            # 只计算基础监督损失，作为日志中的 loss_sup
+            # compute only the base supervised loss as loss_sup for logging
             loss_sup = plain_criterion(logits, target)
 
             if is_distill:
@@ -1855,8 +1855,8 @@ def train_one_epoch(
                     targets=target
                 )
             else:
-                # 非蒸馏模式：必须调用完整 criterion，不能直接用 criterion.base_criterion。
-                # 这里会触发 GSPFRegularizedCriterion.forward()，从而加入 CVPA/GSPF 正则并清空缓存。
+                # non-distillation mode: call the full criterion, never criterion.base_criterion directly.
+                # this triggers GSPFRegularizedCriterion.forward(), adding the CVPA/GSPF regulariser and clearing the cache.
                 total_loss = criterion(logits, target)
             sem_conflict_loss = logits.new_tensor(0.0)
             sem_conflict_lambda = float(getattr(criterion, 'sem_conflict_lambda', 0.0))
@@ -2566,7 +2566,7 @@ def train_one_epoch(
         band     = getattr(criterion, 'band', 0.0)
         grad_var_t = _grad_var_from(logits, target, band=band, pos_only=pos_only, alpha=alpha)
 
-        # 再更新日志
+        # then update the log
         metric_logger.update(
             loss=float(total_loss.item()),
             loss_sup=float(loss_sup.item()),

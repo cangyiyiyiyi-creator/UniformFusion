@@ -31,9 +31,9 @@ class GEBCELoss(nn.Module):
         per_elem = self.bce(logits, targets)
         loss_bce = per_elem.mean() if self.reduction == "mean" else per_elem.sum()
 
-        # —— 计算类级有效梯度强度 G_c ——（trainable 决定是否允许反传）
+        # --- compute the per-class effective gradient magnitude G_c --- (trainable decides whether gradients flow)
         if self.trainable:
-            p = torch.sigmoid(logits)                           # 参与反传（非凸）
+            p = torch.sigmoid(logits)                           # gradient flows (non-convex)
             pos_mask = (targets > 0.5)
             pos_cnt = pos_mask.sum(dim=0).clamp_min(1)
             g_pos = (pos_mask.float() * (1.0 - p)).sum(dim=0) / pos_cnt
@@ -44,7 +44,7 @@ class GEBCELoss(nn.Module):
                 neg_cnt = neg_mask.sum(dim=0).clamp_min(1)
                 g_neg = (neg_mask.float() * p).sum(dim=0) / neg_cnt
                 g = self.alpha * g_pos + (1.0 - self.alpha) * g_neg
-            # EMA 仅作为数值平滑的 buffer，不影响反传路径（buffer 本身无梯度）
+            # the EMA is only a smoothing buffer and does not affect the backward path (a buffer carries no gradient)
             if self.use_ema:
                 self._maybe_init_buffers(C, logits.device, dtype=g.dtype)
                 self.ema_g.mul_(self.momentum).add_(g.detach(), alpha=(1.0 - self.momentum))
@@ -52,7 +52,7 @@ class GEBCELoss(nn.Module):
             else:
                 g_used = g
         else:
-            with torch.no_grad():                               # 不参与反传（凸性与稳定性更好）
+            with torch.no_grad():                               # no backprop (better convexity and stability)
                 p = torch.sigmoid(logits)
                 pos_mask = (targets > 0.5)
                 pos_cnt = pos_mask.sum(dim=0).clamp_min(1)

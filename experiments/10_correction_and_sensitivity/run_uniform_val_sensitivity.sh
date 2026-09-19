@@ -19,7 +19,7 @@ r=Path(sys.argv[1]); rows=[]
 for p in sorted(r.rglob('val_metrics.json')):
  d=json.loads(p.read_text()); rows.append({'method':p.parent.name,'seed':930163947,'best_epoch':d['checkpoint_epoch'],'val_mAP':d['stats']['mAP'],'test_accessed':False})
 if len(rows)!=6: raise RuntimeError(f'expected 6 Val results, got {len(rows)}')
-with (r/'ValOnly敏感性.csv').open('w',newline='',encoding='utf-8-sig') as f:
+with (r/'val_only_sensitivity.csv').open('w',newline='',encoding='utf-8-sig') as f:
  w=csv.DictWriter(f,fieldnames=rows[0]);w.writeheader();w.writerows(rows)
 PY
 touch "$SAVE_ROOT/suite_complete.marker"

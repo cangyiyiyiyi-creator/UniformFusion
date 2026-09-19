@@ -7,7 +7,7 @@ from .attentions import ATTENTION_REGISTRY
 
 
 # ==============================
-# 基础模块
+# base modules
 # ==============================
 
 class ConvBNAct(nn.Module):
@@ -23,7 +23,7 @@ class ConvBNAct(nn.Module):
 
 class ParallelAttentionModule(nn.Module):
     """
-    并联多个注意力模块，然后把输出求和。
+    Runs several attention modules in parallel and sums their outputs.
     """
     def __init__(self, attn_modules: List[nn.Module]):
         super().__init__()
@@ -40,7 +40,7 @@ class ParallelAttentionModule(nn.Module):
 
 class FPN(nn.Module):
     """
-    最小 FPN：输入 C3/C4/C5，输出 P3/P4/P5
+    Minimal FPN: input C3/C4/C5, output P3/P4/P5
     """
     def __init__(self, c3, c4, c5, out_channels=256):
         super().__init__()
@@ -65,10 +65,10 @@ class FPN(nn.Module):
 
 class FPN_PAN(nn.Module):
     """
-    结构：
+    Structure:
       Top-Down:  C5 -> P5, C4 + up(P5) -> P4, C3 + up(P4) -> P3
       Bottom-Up: P3 -> N3, P4 + down(N3) -> N4, P5 + down(N4) -> N5
-      Attention: 分别可挂在 N3 / N4 / N5
+      Attention: can be attached to N3 / N4 / N5
     """
     def __init__(
         self,
@@ -115,18 +115,18 @@ class FPN_PAN(nn.Module):
     # ------------------------------
     def _build_attention_block(self, config: Union[str, list, dict], channels: int) -> nn.Module:
         """
-        支持四种格式：
+        Four supported formats:
 
-        1) 字符串
+        1) string
            "freq_route"
 
-        2) 串联
+        2) sequential
            ["freq_route", "polarity"]
 
-        3) 并联
+        3) parallel
            {"parallel": ["freq_route", "granularity"]}
 
-        4) 参数化
+        4) parameterised
            {"type": "proto_route", "num_prototypes": 8, "temperature": 1.0}
         """
         if config is None:
@@ -135,7 +135,7 @@ class FPN_PAN(nn.Module):
             key = config.lower()
             attn_class = ATTENTION_REGISTRY.get(key, None)
             if attn_class is None:
-                raise ValueError(f"未知注意力类型: {config}")
+                raise ValueError(f"unknown attention type: {config}")
             return attn_class(channels)
 
         elif isinstance(config, list):
@@ -151,15 +151,15 @@ class FPN_PAN(nn.Module):
                 attn_type = config["type"].lower()
                 attn_class = ATTENTION_REGISTRY.get(attn_type, None)
                 if attn_class is None:
-                    raise ValueError(f"未知注意力类型: {attn_type}")
+                    raise ValueError(f"unknown attention type: {attn_type}")
 
                 kwargs = {k: v for k, v in config.items() if k != "type"}
                 return attn_class(channels, **kwargs)
 
-            raise TypeError(f"不支持的注意力配置格式: {config}")
+            raise TypeError(f"unsupported attention configuration format: {config}")
 
         else:
-            raise TypeError(f"不支持的注意力配置格式: {config}")
+            raise TypeError(f"unsupported attention configuration format: {config}")
 
     # ------------------------------
     # Forward

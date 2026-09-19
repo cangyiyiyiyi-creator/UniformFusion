@@ -18,25 +18,25 @@ try:
 except ImportError:
     load_safetensors = None
 
-# 读环境变量 TORCH_HOME，否则用默认 ~/.cache/torch
+# read the TORCH_HOME environment variable, otherwise use the default ~/.cache/torch
 TORCH_HOME = os.environ.get("TORCH_HOME", os.path.join(os.path.expanduser("~"), ".cache", "torch"))
 CKPT_DIR = os.path.join(TORCH_HOME, "hub", "checkpoints")
 
 
 def _load_local_pretrained(model, filename: str):
-    """从本地 .safetensors 或 .pth 加载预训练权重，完全不走 HF。"""
+    """Load pretrained weights from a local .safetensors or .pth file; never touches Hugging Face."""
     ckpt_path = os.path.join(CKPT_DIR, filename)
     if not os.path.isfile(ckpt_path):
-        raise FileNotFoundError(f"预训练权重不存在: {ckpt_path}")
+        raise FileNotFoundError(f"pretrained weights not found: {ckpt_path}")
 
     if filename.endswith(".safetensors"):
         if load_safetensors is None:
-            raise ImportError("需要安装 safetensors：pip install safetensors")
+            raise ImportError("safetensors is required: pip install safetensors")
         state_dict = load_safetensors(ckpt_path)
     else:
         state_dict = torch.load(ckpt_path, map_location="cpu")
 
-    # 避免分类头不匹配之类的问题，strict=False 更稳
+    # strict=False is safer and avoids classification-head mismatches
     missing, unexpected = model.load_state_dict(state_dict, strict=False)
     print(f"[local pretrained] loaded {filename}, missing={len(missing)}, unexpected={len(unexpected)}")
     return model
@@ -48,12 +48,12 @@ def _build(
     checkpoint_path: str | None = None,
 ) -> nn.Module:
     """
-    统一封装 timm.create_model:
-    - 默认 features_only=True，返回特征层列表；
-    - 如果给了 checkpoint_path：我们自己加载权重（strict=False），
-      避免 timm 内部的 HF 下载 / FeatureListNet 命名不匹配问题。
+    Unified wrapper around timm.create_model:
+    - features_only=True by default, returning the feature-level list;
+    - when checkpoint_path is given, the weights are loaded here (strict=False),
+      avoiding timm's internal Hugging Face download and the FeatureListNet naming mismatch.
     """
-    # 先构建模型（暂时不走 timm 的 checkpoint 加载）
+    # build the model first (without timm's checkpoint loading)
     model = create_model(
         timm_name,
         pretrained=(pretrained if checkpoint_path is None else False),
@@ -61,7 +61,7 @@ def _build(
         out_indices=out_indices,
     )
 
-    # 没有本地 ckpt 就直接返回（用 timm 自己的预训练或随机初始化）
+    # without a local checkpoint, return directly (timm pretrained weights or random init)
     if not checkpoint_path:
         return model
 
@@ -71,7 +71,7 @@ def _build(
 
     print(f"[timm_backbones] Manually loading checkpoint: {checkpoint_path}")
 
-    # ---- 手动加载 checkpoint，并做 key 映射 ----
+    # ---- load the checkpoint manually and remap the keys ----
     ckpt = torch.load(checkpoint_path, map_location="cpu")
 
     if isinstance(ckpt, dict):
@@ -86,9 +86,9 @@ def _build(
 
     new_state = {}
     for k, v in state.items():
-        # SwinV2 官方权重是 `layers.0.xxx` 风格，
-        # FeatureListNet 里的模块是 `layers_0.xxx` 风格；
-        # 做一个最小规则：前缀 'layers.' -> 'layers_'
+        # the official SwinV2 weights use the `layers.0.xxx` style,
+        # while the modules inside FeatureListNet use `layers_0.xxx`;
+        # minimal rule: prefix 'layers.' -> 'layers_'
         if k.startswith("layers."):
             new_key = "layers_" + k[len("layers."):]
         else:
@@ -96,7 +96,7 @@ def _build(
         new_state[new_key] = v
 
     msg = model.load_state_dict(new_state, strict=False)
-    # msg 通常是 (missing_keys, unexpected_keys)
+    # msg is normally (missing_keys, unexpected_keys)
     try:
         missing, unexpected = msg
         print(
@@ -148,10 +148,10 @@ def swin_tiny(num_classes: int = 0, pretrained: bool = True, **kwargs) -> nn.Mod
     return _ChannelsLastFeatureAdapter(model)
 
 def maxvit_tiny(pretrained: bool = True, **kwargs):
-    # ① 先构建模型，但绝对禁止 timm 自己去 HF 下权重
+    # 1) build the model, but never let timm download weights from Hugging Face
     model = _build("maxvit_tiny_rw_224", pretrained=False, **kwargs)
 
-    # ② 想用预训练就从本地 safetensors 加载
+    # 2) to use pretrained weights, load them from a local safetensors file
     if pretrained:
         model = _load_local_pretrained(model, "maxvit_tiny_rw_224.sw_in1k.safetensors")
     return model
@@ -172,8 +172,8 @@ def coatnet_0(pretrained: bool = True, **kwargs):
 
 def tf_efficientnet_b5_ns(pretrained: bool = True, **kwargs) -> nn.Module:
     """
-    TIMM 名称: 'tf_efficientnet_b5_ns'
-    本地权重文件: tf_efficientnet_b5.ns_jft_in1k.safetensors
+    TIMM name: 'tf_efficientnet_b5_ns'
+    local weight file: tf_efficientnet_b5.ns_jft_in1k.safetensors
     """
     model = _build("tf_efficientnet_b5_ns", pretrained=False, **kwargs)
 
@@ -183,8 +183,8 @@ def tf_efficientnet_b5_ns(pretrained: bool = True, **kwargs) -> nn.Module:
 
 def efficientnetv2_rw_s(pretrained: bool = True, **kwargs) -> nn.Module:
     """
-    TIMM 名称: 'efficientnetv2_rw_s'
-    本地权重文件: efficientnetv2_rw_s.ra2_in1k.safetensors
+    TIMM name: 'efficientnetv2_rw_s'
+    local weight file: efficientnetv2_rw_s.ra2_in1k.safetensors
     """
     model = _build("efficientnetv2_rw_s", pretrained=False, **kwargs)
 
@@ -194,8 +194,8 @@ def efficientnetv2_rw_s(pretrained: bool = True, **kwargs) -> nn.Module:
 
 def regnety_3_2gf(pretrained: bool = True, **kwargs):
     """
-    TIMM 名称: 'regnety_032'  （RegNetY-3.2GF）
-    本地权重文件: regnety_032.tv2_in1k.safetensors
+    TIMM name: 'regnety_032'  (RegNetY-3.2GF)
+    local weight file: regnety_032.tv2_in1k.safetensors
     """
     model = _build("regnety_032", pretrained=False, **kwargs)
     if pretrained:
@@ -205,8 +205,8 @@ def regnety_3_2gf(pretrained: bool = True, **kwargs):
 
 def regnetz_4_0gf(pretrained: bool = True, **kwargs):
     """
-    TIMM 名称: 'regnetz_040'  （RegNetZ-4.0GF）
-    本地权重文件: regnetz_040.ra3_in1k.safetensors
+    TIMM name: 'regnetz_040'  (RegNetZ-4.0GF)
+    local weight file: regnetz_040.ra3_in1k.safetensors
     """
     model = _build("regnetz_040", pretrained=False, **kwargs)
     if pretrained:
@@ -215,11 +215,11 @@ def regnetz_4_0gf(pretrained: bool = True, **kwargs):
 
 def seresnext26d_32x4d(pretrained: bool = True, **kwargs):
     """
-    TIMM 名称: 'seresnext26d_32x4d'
-    本地权重: seresnext26d_32x4d-80fa48a3.pth
-    SE-ResNeXt-D，适合做 20M+ 级 backbone。
+    TIMM name: 'seresnext26d_32x4d'
+    local weights: seresnext26d_32x4d-80fa48a3.pth
+    SE-ResNeXt-D, suitable as a 20M+ backbone.
     """
-    # 不让 timm 自己下权重，完全走本地
+    # prevent timm from downloading weights; everything comes from local files
     model = _build("seresnext26d_32x4d", pretrained=False, **kwargs)
 
     if pretrained:
@@ -228,15 +228,15 @@ def seresnext26d_32x4d(pretrained: bool = True, **kwargs):
 
 def seresnet50(pretrained: bool = True, **kwargs):
     """
-    TIMM 权重 ID: 'seresnet50.a2_in1k'
-    本地权重文件: seresnet50.a2_in1k.safetensors
-    28.1M 参数的 SE-ResNet50，用 RA2 配方训练。:contentReference[oaicite:3]{index=3}
+    TIMM weight id: 'seresnet50.a2_in1k'
+    local weight file: seresnet50.a2_in1k.safetensors
+    SE-ResNet50 with 28.1M parameters, trained with the RA2 recipe.
     """
-    # 用 timm 里的 'seresnet50.ra2_in1k' 这个名字创建模型骨架
+    # create the model skeleton under the timm name 'seresnet50.ra2_in1k'
     model = _build("seresnet50.a2_in1k", pretrained=False, **kwargs)
 
     if pretrained:
-        # 完全走本地 safetensors，不让 timm 自己下
+        # everything comes from a local safetensors file; timm must not download anything
         model = _load_local_pretrained(model, "seresnet50.a2_in1k.safetensors")
     return model
 
@@ -277,14 +277,14 @@ def densenet201(pretrained: bool = True, **kwargs):
 
 
 # =========================
-# 新增 10 个 backbone 封装
+# ten new backbone wrappers
 # =========================
 
 def resnest50d_1s4x24d(pretrained: bool = True, **kwargs):
     """
-    ResNeSt-50d (1s4x24d), ImageNet-1k 预训练。
-    timm 模型名: 'resnest50d_1s4x24d.in1k'
-    本地权重:    'resnest50d_1s4x24d.in1k.safetensors'
+    ResNeSt-50d (1s4x24d), ImageNet-1k pretrained.
+    timm model name: 'resnest50d_1s4x24d.in1k'
+    local weights: 'resnest50d_1s4x24d.in1k.safetensors'
     """
     model = _build("resnest50d_1s4x24d.in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -294,9 +294,9 @@ def resnest50d_1s4x24d(pretrained: bool = True, **kwargs):
 
 def resnest50d_4s2x40d(pretrained: bool = True, **kwargs):
     """
-    ResNeSt-50d (4s2x40d), ImageNet-1k 预训练。
-    timm 模型名: 'resnest50d_4s2x40d.in1k'
-    本地权重:    'resnest50d_4s2x40d.in1k.safetensors'
+    ResNeSt-50d (4s2x40d), ImageNet-1k pretrained.
+    timm model name: 'resnest50d_4s2x40d.in1k'
+    local weights: 'resnest50d_4s2x40d.in1k.safetensors'
     """
     model = _build("resnest50d_4s2x40d.in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -306,9 +306,9 @@ def resnest50d_4s2x40d(pretrained: bool = True, **kwargs):
 
 def res2net50_26w_4s(pretrained: bool = True, **kwargs):
     """
-    Res2Net-50 26w4s, ImageNet-1k 预训练。
-    timm 模型名: 'res2net50_26w_4s.in1k'
-    本地权重:    'res2net50_26w_4s.in1k.safetensors'
+    Res2Net-50 26w4s, ImageNet-1k pretrained.
+    timm model name: 'res2net50_26w_4s.in1k'
+    local weights: 'res2net50_26w_4s.in1k.safetensors'
     """
     model = _build("res2net50_26w_4s.in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -318,9 +318,9 @@ def res2net50_26w_4s(pretrained: bool = True, **kwargs):
 
 def res2net50_26w_6s(pretrained: bool = True, **kwargs):
     """
-    Res2Net-50 26w6s, ImageNet-1k 预训练。
-    timm 模型名: 'res2net50_26w_6s.in1k'
-    本地权重:    'res2net50_26w_6s.in1k.safetensors'
+    Res2Net-50 26w6s, ImageNet-1k pretrained.
+    timm model name: 'res2net50_26w_6s.in1k'
+    local weights: 'res2net50_26w_6s.in1k.safetensors'
     """
     model = _build("res2net50_26w_6s.in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -330,9 +330,9 @@ def res2net50_26w_6s(pretrained: bool = True, **kwargs):
 
 def regnetz_d8(pretrained: bool = True, **kwargs):
     """
-    RegNetZ-D8, ImageNet-1k 预训练 (RA3 配方)。
-    timm 模型名: 'regnetz_d8.ra3_in1k'
-    本地权重:    'regnetz_d8.ra3_in1k.safetensors'
+    RegNetZ-D8, ImageNet-1k pretrained (RA3 recipe).
+    timm model name: 'regnetz_d8.ra3_in1k'
+    local weights: 'regnetz_d8.ra3_in1k.safetensors'
     """
     model = _build("regnetz_d8.ra3_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -342,9 +342,9 @@ def regnetz_d8(pretrained: bool = True, **kwargs):
 
 def regnety_080(pretrained: bool = True, **kwargs):
     """
-    RegNetY-8.0GF (TV2 配方)。
-    timm 模型名: 'regnety_080_tv.tv2_in1k'
-    本地权重:    'regnety_080_tv.tv2_in1k.safetensors'
+    RegNetY-8.0GF (TV2 recipe).
+    timm model name: 'regnety_080_tv.tv2_in1k'
+    local weights: 'regnety_080_tv.tv2_in1k.safetensors'
     """
     model = _build("regnety_080_tv.tv2_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -354,9 +354,9 @@ def regnety_080(pretrained: bool = True, **kwargs):
 
 def repvgg_b1g4(pretrained: bool = True, **kwargs):
     """
-    RepVGG-B1g4, ImageNet-1k 预训练。
-    timm 模型名: 'repvgg_b1g4.rvgg_in1k'
-    本地权重:    'repvgg_b1g4.rvgg_in1k.safetensors'
+    RepVGG-B1g4, ImageNet-1k pretrained.
+    timm model name: 'repvgg_b1g4.rvgg_in1k'
+    local weights: 'repvgg_b1g4.rvgg_in1k.safetensors'
     """
     model = _build("repvgg_b1g4.rvgg_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -366,9 +366,9 @@ def repvgg_b1g4(pretrained: bool = True, **kwargs):
 
 def cspresnet50(pretrained: bool = True, **kwargs):
     """
-    CSP-ResNet-50, ImageNet-1k 预训练。
-    timm 模型名: 'cspresnet50.ra_in1k'
-    本地权重:    'cspresnet50.ra_in1k.safetensors'
+    CSP-ResNet-50, ImageNet-1k pretrained.
+    timm model name: 'cspresnet50.ra_in1k'
+    local weights: 'cspresnet50.ra_in1k.safetensors'
     """
     model = _build("cspresnet50.ra_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -378,9 +378,9 @@ def cspresnet50(pretrained: bool = True, **kwargs):
 
 def cspresnext50(pretrained: bool = True, **kwargs):
     """
-    CSP-ResNeXt-50, ImageNet-1k 预训练。
-    timm 模型名: 'cspresnext50.ra_in1k'
-    本地权重:    'cspresnext50.ra_in1k.safetensors'
+    CSP-ResNeXt-50, ImageNet-1k pretrained.
+    timm model name: 'cspresnext50.ra_in1k'
+    local weights: 'cspresnext50.ra_in1k.safetensors'
     """
     model = _build("cspresnext50.ra_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -390,22 +390,22 @@ def cspresnext50(pretrained: bool = True, **kwargs):
 
 def ecaresnet50t(pretrained: bool = True, **kwargs):
     """
-    ECA-ResNet-50 (T 版本)，ImageNet-1k 预训练。
-    timm 模型名: 'ecaresnet50t.a1_in1k'
-    本地权重:    'ecaresnet50t.a1_in1k.safetensors'
+    ECA-ResNet-50 (T variant), ImageNet-1k pretrained.
+    timm model name: 'ecaresnet50t.a1_in1k'
+    local weights: 'ecaresnet50t.a1_in1k.safetensors'
     """
     model = _build("ecaresnet50t.a1_in1k", pretrained=False, **kwargs)
     if pretrained:
         model = _load_local_pretrained(model, "ecaresnet50t.a1_in1k.safetensors")
     return model
 
-# ====================== 20–50M 经典 CNN backbones ======================
+# ====================== 20-50M classic CNN backbones ======================
 
 def resnet34(pretrained: bool = True, **kwargs):
     """
     ResNet34 (A1 recipe, 21.8M params)
     timm id: resnet34.a1_in1k
-    本地权重文件: resnet34.a1_in1k.safetensors
+    local weight file: resnet34.a1_in1k.safetensors
     """
     model = _build("resnet34.a1_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -417,7 +417,7 @@ def resnet101(pretrained: bool = True, **kwargs):
     """
     ResNet101 (TV ImageNet-1k, 44.5M params)
     timm id: resnet101.tv_in1k
-    本地权重文件: resnet101.tv_in1k.safetensors
+    local weight file: resnet101.tv_in1k.safetensors
     """
     model = _build("resnet101.tv_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -429,7 +429,7 @@ def resnext101_32x4d(pretrained: bool = True, **kwargs):
     """
     ResNeXt101-32x4d (Gluon ImageNet-1k, ~44M params)
     timm id: resnext101_32x4d.gluon_in1k
-    本地权重文件: resnext101_32x4d.gluon_in1k.safetensors
+    local weight file: resnext101_32x4d.gluon_in1k.safetensors
     """
     model = _build("resnext101_32x4d.gluon_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -441,7 +441,7 @@ def regnetx_040(pretrained: bool = True, **kwargs):
     """
     RegNetX-4GF, ~22M params
     timm id: regnetx_040.pycls_in1k
-    本地权重文件: regnetx_040.pycls_in1k.safetensors
+    local weight file: regnetx_040.pycls_in1k.safetensors
     """
     model = _build("regnetx_040.pycls_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -453,7 +453,7 @@ def regnetx_064(pretrained: bool = True, **kwargs):
     """
     RegNetX-6.4GF, 26.2M params
     timm id: regnetx_064.pycls_in1k
-    本地权重文件: regnetx_064.pycls_in1k.safetensors
+    local weight file: regnetx_064.pycls_in1k.safetensors
     """
     model = _build("regnetx_064.pycls_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -465,7 +465,7 @@ def regnetx_080(pretrained: bool = True, **kwargs):
     """
     RegNetX-8GF, 39.6M params
     timm id: regnetx_080.tv2_in1k
-    本地权重文件: regnetx_080.tv2_in1k.safetensors
+    local weight file: regnetx_080.tv2_in1k.safetensors
     """
     model = _build("regnetx_080.tv2_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -477,7 +477,7 @@ def regnetx_120(pretrained: bool = True, **kwargs):
     """
     RegNetX-12GF, 46.1M params
     timm id: regnetx_120.pycls_in1k
-    本地权重文件: regnetx_120.pycls_in1k.safetensors
+    local weight file: regnetx_120.pycls_in1k.safetensors
     """
     model = _build("regnetx_120.pycls_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -489,7 +489,7 @@ def regnetv_040(pretrained: bool = True, **kwargs):
     """
     RegNetV-4GF, 20.6M params
     timm id: regnetv_040.ra3_in1k
-    本地权重文件: regnetv_040.ra3_in1k.safetensors
+    local weight file: regnetv_040.ra3_in1k.safetensors
     """
     model = _build("regnetv_040.ra3_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -501,7 +501,7 @@ def inception_v3(pretrained: bool = True, **kwargs):
     """
     Inception-v3 (TV, 23.8M params)
     timm id: inception_v3.tv_in1k
-    本地权重文件: inception_v3.tv_in1k.safetensors
+    local weight file: inception_v3.tv_in1k.safetensors
     """
     model = _build("inception_v3.tv_in1k", pretrained=False, **kwargs)
     if pretrained:
@@ -513,7 +513,7 @@ def densenet161(pretrained: bool = True, **kwargs):
     """
     DenseNet-161 (28.7M params)
     timm id: densenet161.tv_in1k
-    本地权重文件: densenet161.tv_in1k.safetensors
+    local weight file: densenet161.tv_in1k.safetensors
     """
     model = _build("densenet161.tv_in1k", pretrained=False, **kwargs)
     if pretrained:

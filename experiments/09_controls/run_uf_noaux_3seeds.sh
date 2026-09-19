@@ -44,12 +44,12 @@ for path in sorted(root.rglob("test_metrics.json")):
     })
 if len(rows) != 3:
     raise RuntimeError(f"expected 3 results, got {len(rows)}")
-with (root / "UF_NoAux_逐seed.csv").open("w", newline="", encoding="utf-8-sig") as handle:
+with (root / "UF_NoAux_per_seed.csv").open("w", newline="", encoding="utf-8-sig") as handle:
     writer = csv.DictWriter(handle, fieldnames=rows[0])
     writer.writeheader()
     writer.writerows(rows)
 values = [row["test_mAP"] for row in rows]
-(root / "UF_NoAux_汇总.txt").write_text(
+(root / "UF_NoAux_summary.txt").write_text(
     f"n=3\ntest_mAP={statistics.mean(values):.6f}±{statistics.stdev(values):.6f}\n",
     encoding="utf-8",
 )

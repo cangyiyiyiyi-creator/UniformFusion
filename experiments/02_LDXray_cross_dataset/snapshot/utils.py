@@ -19,19 +19,19 @@ import argparse
 
 from collections import OrderedDict
 
-# ===== TensorBoard Writer 兼容层 =====
-# 优先 torch.utils.tensorboard，其次 tensorboardX；都没有则降级为 Dummy，不中断训练
+# ===== TensorBoard Writer compatibility layer =====
+# prefer torch.utils.tensorboard, then tensorboardX; fall back to a dummy writer so training never breaks
 class _DummyWriter:
     def add_scalar(self, *args, **kwargs): pass
     def flush(self): pass
 
 _USING_TORCH_TB = False
 try:
-    from torch.utils.tensorboard import SummaryWriter as _TBWriter  # 需: pip install tensorboard
+    from torch.utils.tensorboard import SummaryWriter as _TBWriter  # requires: pip install tensorboard
     _USING_TORCH_TB = True
 except Exception:
     try:
-        from tensorboardX import SummaryWriter as _TBWriter          # 需: pip install tensorboardX
+        from tensorboardX import SummaryWriter as _TBWriter          # requires: pip install tensorboardX
     except Exception:
         _TBWriter = _DummyWriter
 
@@ -199,11 +199,11 @@ class TensorboardLogger(object):
         if _USING_TORCH_TB:
             self.writer = _TBWriter(log_dir=log_dir)
         else:
-            # tensorboardX 或 DummyWriter
+            # tensorboardX or the dummy writer
             try:
                 self.writer = _TBWriter(logdir=log_dir)
             except TypeError:
-                # DummyWriter 没有该参数名；直接实例化
+                # the dummy writer has no such parameter; instantiate it directly
                 self.writer = _TBWriter()
         self.step = 0
 
@@ -569,10 +569,10 @@ def print_on_master(*args, **kwargs):
     otherwise prints unconditionally.
     """
     try:
-        # 如果你的 utils 里已有 is_main_process()，这行会生效
+        # takes effect when utils.py already provides is_main_process()
         cond = is_main_process()
     except Exception:
-        # 兜底：无分布式时就直接打印
+        # fallback: print directly when running without distributed training
         cond = True
     if cond:
         print(*args, **kwargs)

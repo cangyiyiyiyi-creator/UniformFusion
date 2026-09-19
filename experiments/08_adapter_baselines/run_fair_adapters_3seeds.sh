@@ -41,14 +41,14 @@ for path in sorted(root.rglob("test_metrics.json")):
                  "best_epoch": val["checkpoint_epoch"], "val_mAP": val["stats"]["mAP"],
                  "test_mAP": test["stats"]["mAP"], "checkpoint": str(path.parent / "checkpoint_best.pth")})
 if len(rows) != 6: raise RuntimeError(f"expected 6 results, got {len(rows)}")
-with (root / "公平Adapter_逐seed.csv").open("w", newline="", encoding="utf-8-sig") as f:
+with (root / "fair_adapters_per_seed.csv").open("w", newline="", encoding="utf-8-sig") as f:
     w=csv.DictWriter(f,fieldnames=rows[0]); w.writeheader(); w.writerows(rows)
 summary=[]
 for method in sorted({r["method"] for r in rows}):
     values=[r["test_mAP"] for r in rows if r["method"]==method]
     summary.append({"method":method,"n":len(values),"test_mAP_mean":statistics.mean(values),
                     "test_mAP_std_sample":statistics.stdev(values)})
-with (root / "公平Adapter_汇总.csv").open("w", newline="", encoding="utf-8-sig") as f:
+with (root / "fair_adapters_summary.csv").open("w", newline="", encoding="utf-8-sig") as f:
     w=csv.DictWriter(f,fieldnames=summary[0]); w.writeheader(); w.writerows(summary)
 PY
 touch "$SAVE_ROOT/suite_complete.marker"

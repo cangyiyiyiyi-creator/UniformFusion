@@ -126,10 +126,10 @@ def convnextv2_nano(**kwargs):
     return model
 
 def convnextv2_tiny(**kwargs):
-    # 你的原始构建代码，大致类似：
+    # roughly what the original builder code looks like:
     # model = ConvNeXtV2(depths=[3,3,9,3], dims=[96,192,384,768], **kwargs)
     model = ConvNeXtV2(depths=[3,3,9,3], dims=[96,192,384,768], **kwargs)
-    # ---- [ADDED] 暴露 stage 维度 & 最终通道数 ----
+    # ---- [ADDED] expose the stage dimensions and the final channel count ----
     model.dims = (96, 192, 384, 768)
     model.num_features = 768
     return model
@@ -144,11 +144,11 @@ def convnextv2_small(**kwargs):
 
 
 def convnextv2_base(**kwargs):
-    # ✅ 你当前使用的就是这个
+    # this is the variant currently in use
     # model = ConvNeXtV2(depths=[3,3,27,3], dims=[128,256,512,1024], **kwargs)
     model = ConvNeXtV2(depths=[3,3,27,3], dims=[128,256,512,1024], **kwargs)
-    model.dims = (128, 256, 512, 1024)   # [ADDED] 供 Dual/FPN 读取 C3/C4/C5 通道
-    model.num_features = 1024            # [ADDED] 诸如分类头/池化后线性层会用到
+    model.dims = (128, 256, 512, 1024)   # [ADDED] lets Dual/FPN read the C3/C4/C5 channel counts
+    model.num_features = 1024            # [ADDED] used by classification heads / post-pooling linear layers
     return model
 
 
@@ -161,7 +161,7 @@ def convnextv2_large(**kwargs):
 
 
 def convnextv2_xlarge(**kwargs):
-    # 视仓库是否有该 variant；给出常见配置
+    # depends on whether the variant exists in the repo; the usual configuration is listed here
     model = ConvNeXtV2(depths=[3,3,27,3], dims=[256,512,1024,2048], **kwargs)
     model.dims = (256, 512, 1024, 2048)  # [ADDED]
     model.num_features = 2048            # [ADDED]

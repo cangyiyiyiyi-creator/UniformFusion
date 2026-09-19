@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-DVXRAY 双视角数据集加载器（datasets.py）
-- 返回 ((imgA, imgB), target)
-- 训练/验证两种模式（同步增广）
-- 通过 build_loaders(args) 构建 DataLoader
+DvXray dual-view dataset loader (datasets.py)
+- Returns ((imgA, imgB), target)
+- Two modes, training / validation (synchronised augmentation)
+- Build the DataLoader through build_loaders(args)
 """
 
 import os
@@ -20,16 +20,16 @@ from models.modules.augmentations import RandAugment, TrivialAugmentWide
 
 
 # ===========================
-# 基本常量
+# Basic constants
 # ===========================
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD  = (0.229, 0.224, 0.225)
 
 # ===========================
-# 辅助函数
+# Helper functions
 # ===========================
 def _read_class_names(path: str, num_classes: int) -> List[str]:
-    """读取类别名文件；若无则生成 cls_0, cls_1 ..."""
+    """Read the class-name file; fall back to cls_0, cls_1, ..."""
     if path and os.path.isfile(path):
         names = [ln.strip() for ln in open(path, "r", encoding="utf-8") if ln.strip()]
         if len(names) >= num_classes:
@@ -37,41 +37,41 @@ def _read_class_names(path: str, num_classes: int) -> List[str]:
     return [f"cls_{i}" for i in range(num_classes)]
 
 def _parse_labels(tokens: List[str], num_classes: int) -> torch.Tensor:
-    """解析多标签：支持以空格或逗号分隔"""
+    """Parse the multi-hot labels; space or comma separated"""
     if len(tokens) == 1 and ("," in tokens[0]):
         vals = [int(x) for x in tokens[0].replace(",", " ").split()]
     else:
         vals = [int(x) for x in tokens]
     if len(vals) != num_classes:
-        raise ValueError(f"标签维度不对：期望 {num_classes}，实际 {len(vals)}；内容={vals[:10]}")
+        raise ValueError(f"wrong label dimension: expected {num_classes}, got {len(vals)}; content={vals[:10]}")
     return torch.tensor(vals, dtype=torch.float32)
 
 def _parse_line(line: str, num_classes: int) -> Tuple[str, str, torch.Tensor]:
     """
-    每行格式：
+    Line format:
         imgA_path imgB_path label1 label2 ... labelK
-    或
+    or
         imgA_path imgB_path 1,0,0,1,...,0
     """
     toks = line.strip().split()
     if len(toks) < 3:
-        raise ValueError(f"标注行错误：{line}")
+        raise ValueError(f"malformed annotation line: {line}")
     a, b = toks[0], toks[1]
     y = _parse_labels(toks[2:], num_classes)
     return a, b, y
 
 # ===========================
-# 【核心修改】同步数据增强类
+# [core change] synchronised augmentation class
 # ===========================
 class SynchronizedTransform:
     """
-    一个封装类，确保对双视角的两个图像应用完全相同的随机参数。
+    Wrapper that applies exactly the same random parameters to both views.
     """
     def __init__(self, transform: nn.Module):
         self.transform = transform
 
     def __call__(self, imgA: Image.Image, imgB: Image.Image) -> Tuple[Image.Image, Image.Image]:
-        # 保存并设置随机状态，确保两次调用transform时随机参数一致
+        # save and fix the RNG state so that both transform calls draw the same randomness
         seed = random.randint(0, 2**32)
         random.seed(seed)
         torch.manual_seed(seed)
@@ -85,7 +85,7 @@ class SynchronizedTransform:
 
 
 # ===========================
-# 数据集类 (最终修正版)
+# Dataset class (final revision)
 # ===========================
 class DualViewTxtDataset(Dataset):
     def __init__(
@@ -116,39 +116,39 @@ class DualViewTxtDataset(Dataset):
                 "view_mode must be paired, a_only, b_only, or mismatched; "
                 f"got {view_mode!r}"
             )
-        # 修改为：
+        # changed to:
         self.use_conditional_aug = aug_mode.startswith('conditional')
 
-        # --- 【修正】识别“弱科”类别 ---
+        # --- [fix] identify the "weak" classes ---
         hard_class_names = {"Scissors", "Lighter", "Razor_blade","Knife"}
         self.hard_class_indices = {i for i, name in enumerate(class_names) if name in hard_class_names}
         self.class_names = class_names
         self.class_to_idx = {n: i for i, n in enumerate(self.class_names)}
 
         if self.train:
-            # 只有在“总开关”开启时，才打印“已启用”的日志
+            # only log "enabled" when the master switch is on
             if self.use_conditional_aug:
-                print(f"✅ [专项增强] 已启用 (ON)，将对弱科类别索引 {self.hard_class_indices} 应用强化训练。")
+                print(f"[targeted augmentation] enabled (ON), strengthened training is applied to weak-class indices {self.hard_class_indices}.")
             else:
-                print("ℹ️  [专项增强] 已关闭 (OFF)，所有样本将使用标准数据增强。")
+                print("[targeted augmentation] disabled (OFF), every sample uses standard augmentation.")
 
-        # --- 【修正】用真实的增强流程替换占位符 ---
+        # --- [fix] replace the placeholder with the real augmentation pipeline ---
         if self.train:
-            # 准备基础增强 (裁剪和翻转)
+            # base augmentation (crop and flip)
             base_transforms = [
                 T.RandomResizedCrop(input_size, scale=(0.8, 1.0), ratio=(3./4., 4./3.)),
                 T.RandomHorizontalFlip(),
             ]
             if aug_mode == 'none':
-                # 【新】模式0: 无增强模式 (只做 Resize)
+                # [new] mode 0: no augmentation (resize only)
                 self.transforms = SynchronizedTransform(T.Resize((input_size, input_size), antialias=True)) 
 
             elif aug_mode == 'standard':
-                # 模式1: 标准模式 (只加入温和的颜色抖动)
+                # mode 1: standard (mild colour jitter only)
                 self.transforms = SynchronizedTransform(T.Compose(base_transforms + [T.ColorJitter(0.1, 0.1, 0.1, 0.05)]))
             
             elif aug_mode == 'conditional':
-                # 模式2: 条件模式 (准备两套)
+                # mode 2: conditional (two pipelines)
                 self.normal_transforms = SynchronizedTransform(T.Compose(base_transforms + [T.ColorJitter(0.1, 0.1, 0.1, 0.05)]))
                 self.strong_transforms = SynchronizedTransform(T.Compose([
                     T.RandomResizedCrop(input_size, scale=(0.6, 1.0)),
@@ -165,30 +165,30 @@ class DualViewTxtDataset(Dataset):
                     T.ColorJitter(0.1, 0.1, 0.1, 0.05),
                 ]))
                 self.strong_transforms = SynchronizedTransform(T.Compose([
-                    T.RandomResizedCrop(input_size, scale=(0.7, 1.0)),   # 比 conditional_2 温和
+                    T.RandomResizedCrop(input_size, scale=(0.7, 1.0)),   # gentler than conditional_2
                     T.RandomHorizontalFlip(),
                     T.RandomRotation(10),
                     T.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15),
                 ]))
-                # 沿用已有弱科集合（可在 __init__ 顶部的 hard_class_names 调整）
+                # reuse the existing weak-class set (adjust hard_class_names at the top of __init__)
                 self.hard_class_indices = set(getattr(self, "hard_class_indices", set()))
 
             elif aug_mode == 'rand_aug':
-                # 模式3: RandAugment 模式
+                # mode 3: RandAugment
                 self.transforms = SynchronizedTransform(T.Compose(base_transforms + [RandAugment(n=rand_aug_n, m=rand_aug_m)]))
             
             elif aug_mode == 'trivial_aug':
-                # 模式4: TrivialAugment 模式
+                # mode 4: TrivialAugment
                 self.transforms = SynchronizedTransform(T.Compose(base_transforms + [TrivialAugmentWide()]))
             
             else:
                 raise ValueError(f"Unknown aug_mode: {aug_mode}")
         
-        else: # 验证集
+        else: # validation split
             self.val_transforms = SynchronizedTransform(T.Resize((input_size, input_size), antialias=True))
 
 
-        # 最终转换为Tensor和归一化的操作是共用的
+        # the final tensor conversion and normalisation are shared by all modes
         self.to_tensor_and_norm = T.Compose([
             T.ToTensor(),
             T.Normalize(IMAGENET_MEAN, IMAGENET_STD)
@@ -197,7 +197,7 @@ class DualViewTxtDataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
-    # --- 【修正】旧的、冗余的数据增强函数已被安全删除 ---
+    # --- [fix] the old, redundant augmentation helpers were removed safely ---
 
     def __getitem__(self, idx: int):
         a_path, b_path, y = _parse_line(self.samples[idx], self.num_classes)
@@ -209,7 +209,7 @@ class DualViewTxtDataset(Dataset):
                 self.samples[mismatch_idx], self.num_classes
             )
         if not os.path.isfile(a_path) or not os.path.isfile(b_path):
-            raise FileNotFoundError(f"缺少图像：{a_path} 或 {b_path}")
+            raise FileNotFoundError(f"missing image: {a_path} or {b_path}")
 
         imgA = Image.open(a_path).convert("RGB")
         imgB = Image.open(b_path).convert("RGB")
@@ -223,26 +223,26 @@ class DualViewTxtDataset(Dataset):
         
         if self.train:
             if getattr(self, "aug_mode", None)  == 'conditional_4' or self.use_conditional_aug:
-                # 条件增强：按"弱科类"样本分流
+                # conditional augmentation: route samples by weak-class membership
                 contains_hard_class = any((y[i] == 1) for i in self.hard_class_indices)
                 if contains_hard_class and self.strong_transforms is not None:
                     imgA, imgB = self.strong_transforms(imgA, imgB)
                 else:
-                    # 旧版 conditional 走 normal_transforms；standard/none 则走 self.transforms
+                    # legacy conditional uses normal_transforms; standard/none use self.transforms
                     if hasattr(self, "normal_transforms") and self.normal_transforms is not None:
                         imgA, imgB = self.normal_transforms(imgA, imgB)
                     else:
                         imgA, imgB = self.transforms(imgA, imgB)
 
             else:
-                # 其他训练模式：standard / none / rand_aug / trivial_aug
+                # other training modes: standard / none / rand_aug / trivial_aug
                 imgA, imgB = self.transforms(imgA, imgB)
 
         else:
-            # 验证集统一走 val_transforms
+            # validation always uses val_transforms
             imgA, imgB = self.val_transforms(imgA, imgB)
 
-        # 最后的 toTensor 和归一化
+        # final toTensor and normalisation
         ta = self.to_tensor_and_norm(imgA)
         tb = self.to_tensor_and_norm(imgB)
         
@@ -250,21 +250,21 @@ class DualViewTxtDataset(Dataset):
 
    
 # ===========================
-# DataLoader 构建函数
+# DataLoader construction
 # ===========================
 def build_loaders(args):
     """
-    供 main_finetune.py 调用
-    args 需包含：
+    Called from main_finetune.py
+    args must contain:
         train_list / val_list / classes_file / input_size / batch_size / num_classes
-    返回：
+    Returns:
         train_loader, val_loader, class_names
     """
     num_workers = getattr(args, "num_workers", 8)
     class_names = _read_class_names(
         getattr(args, "classes_file", ""), args.num_classes
     )
-    # --- 【核心修正】从 args 中读取所有新的增强参数 ---
+    # --- [core fix] read every new augmentation argument from args ---
     train_set = DualViewTxtDataset(
         args.train_list, args.input_size, args.num_classes, train=True, class_names=class_names,
         aug_mode=args.aug_mode,

@@ -44,18 +44,18 @@ class CrossViewGeoSemanticAlign(nn.Module):
     """
     CV-GSC: Cross-view Geometric-Semantic Consistency Alignment.
 
-    输入：
+    Inputs:
         f1: view-1 feature, [B, C, H, W]
         f2: view-2 feature, [B, C, H, W]
 
-    输出：
+    Output:
         f1_out, f2_out
 
-    作用：
-        1) view1 查询 view2；
-        2) view2 查询 view1；
-        3) 训练阶段缓存 semantic consistency loss；
-        4) 训练阶段缓存 geometry response consistency loss。
+    Purpose:
+        1) view1 queries view2;
+        2) view2 queries view1;
+        3) caches the semantic consistency loss during training;
+        4) caches the geometry-response consistency loss during training.
     """
 
     def __init__(

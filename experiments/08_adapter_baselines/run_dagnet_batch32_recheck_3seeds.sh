@@ -17,7 +17,7 @@ r=Path(sys.argv[1]);rows=[]
 for p in sorted(r.rglob('test_metrics.json')):
  t=json.loads(p.read_text());v=json.loads((p.parent/'val_metrics.json').read_text());rows.append({'seed':int(p.parents[2].name.split('_')[-1]),'best_epoch':v['checkpoint_epoch'],'val_mAP':v['stats']['mAP'],'test_mAP':t['stats']['mAP']})
 if len(rows)!=3:raise RuntimeError(f'expected 3 results, got {len(rows)}')
-with (r/'DAGNet_batch32_逐seed.csv').open('w',newline='',encoding='utf-8-sig') as f:w=csv.DictWriter(f,fieldnames=rows[0]);w.writeheader();w.writerows(rows)
-a=[x['test_mAP'] for x in rows];(r/'DAGNet_batch32_汇总.txt').write_text(f'n=3\ntest_mAP={statistics.mean(a):.6f}±{statistics.stdev(a):.6f}\n')
+with (r/'DAGNet_batch32_per_seed.csv').open('w',newline='',encoding='utf-8-sig') as f:w=csv.DictWriter(f,fieldnames=rows[0]);w.writeheader();w.writerows(rows)
+a=[x['test_mAP'] for x in rows];(r/'DAGNet_batch32_summary.txt').write_text(f'n=3\ntest_mAP={statistics.mean(a):.6f} ± {statistics.stdev(a):.6f}\n')
 PY
 touch "$SAVE_ROOT/suite_complete.marker"

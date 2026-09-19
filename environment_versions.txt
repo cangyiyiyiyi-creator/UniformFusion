@@ -1,5 +1,5 @@
-# Uniform Fusion 论文运行环境记录
-# 对应 README 第 3 节；完整 pip freeze 见 pip_freeze.txt
+# UniformFusion paper environment record
+# see README section 3; the complete pip freeze is in pip_freeze.txt
 
 conda_environment=v2b384_env
 python=3.10.20

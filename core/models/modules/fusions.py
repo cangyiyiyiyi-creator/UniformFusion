@@ -3,12 +3,12 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 from typing import Tuple, Dict
-# 从同级目录的 common.py 中导入 Conv1x1
+# import Conv1x1 from the sibling common.py
 from .common import Conv1x1
 import torch.nn.functional as F 
 
 # ------------------------------
-# Gated 融合：concat → 1x1 降维 → SE 门控
+# gated fusion: concat -> 1x1 projection -> SE gate
 # ------------------------------
 class GatedFuse(nn.Module):
     def __init__(self, in_ch: int, out_ch: int, r: int = 8):
@@ -27,7 +27,7 @@ class GatedFuse(nn.Module):
         w = self.avg(y)                     # [B,C,1,1]
         w = self.fc2(self.act(self.fc1(w)))
         w = self.sig(w)
-        return y * w + y * (1 - w) * 0.0    # 保留结构，等价于 y * w
+        return y * w + y * (1 - w) * 0.0    # keeps the structure, equivalent to y * w
 
 
 class ClasswiseRegionComplementFuse(nn.Module):
@@ -214,22 +214,22 @@ class InterventionStableFuse(nn.Module):
 
 
 # ------------------------------
-# XAttn 融合：双向跨视角注意力（可下采样降低 token 数）
-# A 作为 Query、B 作为 KV 得到 A←B 的信息；反向亦然，然后平均融合 + 残差回传
+# XAttn fusion: bidirectional cross-view attention (downsampling reduces the token count)
+# A as query and B as KV gives the A<-B message; the reverse direction is identical, then average and add a residual
 # ------------------------------
 class XAttnFuse(nn.Module):
     def __init__(self, channels: int, num_heads: int = 4, reduction: int = 4):
         super().__init__()
-        assert channels % num_heads == 0, "channels 必须能被 num_heads 整除"
+        assert channels % num_heads == 0, "channels must be divisible by num_heads"
         self.channels = int(channels)
         self.num_heads = int(num_heads)
         self.reduction = max(int(reduction), 1)
 
-        # PyTorch MultiheadAttention 期望 [S,B,E]
+        # PyTorch MultiheadAttention expects [S,B,E]
         self.mha_ab = nn.MultiheadAttention(embed_dim=self.channels, num_heads=self.num_heads, batch_first=False)
         self.mha_ba = nn.MultiheadAttention(embed_dim=self.channels, num_heads=self.num_heads, batch_first=False)
 
-        # 归一化 & 输出映射
+        # normalisation and output projection
         self.norm_q = nn.LayerNorm(self.channels)
         self.norm_kv = nn.LayerNorm(self.channels)
         self.proj = nn.Conv2d(self.channels, self.channels, kernel_size=1, bias=False)
@@ -262,39 +262,39 @@ class XAttnFuse(nn.Module):
     def forward(self, xa: torch.Tensor, xb: torch.Tensor) -> torch.Tensor:
         B, C, H, W = xa.shape
 
-        # 空间下采样，降低 token 数（更省显存）
+        # spatial downsampling to reduce the token count (saves GPU memory)
         xa_ds = self._downsample(xa)
         xb_ds = self._downsample(xb)
         h, w = xa_ds.shape[-2], xa_ds.shape[-1]
 
-        # token 化
+        # tokenisation
         qa, _ = self._to_seq(xa_ds)       # [S,B,C]
         kab = self._to_seq_kv(xb_ds)      # [S,B,C]
         qb, _ = self._to_seq(xb_ds)
         kba = self._to_seq_kv(xa_ds)
 
-        # 双向 cross-attn
+        # bidirectional cross-attention
         y_ab, _ = self.mha_ab(qa, kab, kab, need_weights=False)  # A <- B
         y_ba, _ = self.mha_ba(qb, kba, kba, need_weights=False)  # B <- A
 
-        # 回到 [B,C,h,w]
+        # back to [B,C,h,w]
         y_ab = y_ab.transpose(0, 1).transpose(1, 2).reshape(B, C, h, w)
         y_ba = y_ba.transpose(0, 1).transpose(1, 2).reshape(B, C, h, w)
 
-        # 上采样回原尺寸
+        # upsample back to the original size
         y_ab = self._upsample(y_ab, (H, W))
         y_ba = self._upsample(y_ba, (H, W))
 
-        # 融合：平均后再 1x1，并加入残差（更稳）
+        # fusion: average, apply 1x1, add the residual (more stable)
         y = 0.5 * (y_ab + y_ba)
         y = self.proj(y)
-        return xa + 0.5 * y   # 残差：对原特征做温和调
+        return xa + 0.5 * y   # residual: gently adjust the original features
     
 # ==============================
-# [新增] AHCR 核心组件：自适应交叉注意力
+# [added] AHCR core component: adaptive cross attention
 # ==============================
 # ==============================
-# [修正] AHCR 核心组件：自适应交叉注意力 (完全版)
+# [fixed] AHCR core component: adaptive cross attention (full version)
 # ==============================
 class AdaptiveCrossAttention(nn.Module):
     def __init__(self, dim_query, dim_kv, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
@@ -332,7 +332,7 @@ class AdaptiveCrossAttention(nn.Module):
         return x_query + self.gamma * x
 
 # ==============================
-# [修正] AHCR 融合模块 (终极版)
+# [fixed] AHCR fusion module (final version)
 # ==============================
 class AHCRFuse(nn.Module):
     def __init__(self, c3_dim, c4_dim, c5_dim, mode='intra_level'):
@@ -340,7 +340,7 @@ class AHCRFuse(nn.Module):
         self.mode = mode
 
         if self.mode == 'intra_level':
-            # 在层内模式下，query 和 kv 维度相同
+            # in the within-layer mode query and kv share the same dimension
             self.cross_attn_c3 = AdaptiveCrossAttention(dim_query=c3_dim, dim_kv=c3_dim)
             self.cross_attn_c3_rev = AdaptiveCrossAttention(dim_query=c3_dim, dim_kv=c3_dim)
             self.cross_attn_c4 = AdaptiveCrossAttention(dim_query=c4_dim, dim_kv=c4_dim)
@@ -362,7 +362,7 @@ class AHCRFuse(nn.Module):
             self.final_fuse_c4 = Conv1x1(in_ch=2*c4_dim, out_ch=c4_dim, act=True)
             self.final_fuse_c5 = nn.Identity()
         else:
-            raise ValueError(f"未知的 AHCR 模式: {self.mode}")
+            raise ValueError(f"unknown AHCR mode: {self.mode}")
 
     def _flatten(self, x):
         return x.flatten(2).transpose(1, 2)
@@ -403,8 +403,8 @@ class AHCRFuse(nn.Module):
             return {'C3': fused_c3, 'C4': fused_c4, 'C5': fused_c5}
 
         elif self.mode == 'inter_level':
-            # --- 跨层交叉逻辑 (示例实现) ---
-            # 精炼 C3a (细) & C3b (细): 分别用 c4b (粗) 和 c4a (粗) 作为 key/value
+            # --- cross-layer attention logic (example implementation) ---
+            # refine C3a (fine) & C3b (fine): use c4b (coarse) and c4a (coarse) as key/value respectively
             c4b_resized = F.interpolate(c4b, size=(H3, W3), mode='bilinear', align_corners=False)
             c3a_r = self.cross_attn_c4_to_c3(self._flatten(c3a), self._flatten(c4b_resized))
             
@@ -416,7 +416,7 @@ class AHCRFuse(nn.Module):
                 self._reshape(c3b_r, B, C3, H3, W3)
             ], dim=1))
 
-            # 精炼 C4a (中) & C4b (中): 分别用 c5b (最粗) 和 c5a (最粗) 作为 key/value
+            # refine C4a (medium) & C4b (medium): use c5b (coarsest) and c5a (coarsest) as key/value respectively
             c5b_resized = F.interpolate(c5b, size=(H4, W4), mode='bilinear', align_corners=False)
             c4a_r = self.cross_attn_c5_to_c4(self._flatten(c4a), self._flatten(c5b_resized))
             
@@ -428,6 +428,6 @@ class AHCRFuse(nn.Module):
                 self._reshape(c4b_r, B, C4, H4, W4)
             ], dim=1))
 
-            # C5 层级最高，没有更粗的层级来精炼它，所以直接用 A 视角的 (或简单融合)
+            # C5 is the coarsest level, so nothing coarser can refine it; use view A directly (or a simple fusion)
             fused_c5 = self.final_fuse_c5(c5a)
             return {'C3': fused_c3, 'C4': fused_c4, 'C5': fused_c5}

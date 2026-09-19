@@ -5,11 +5,12 @@ title: >-
   X-Ray Multi-Label Recognition
 type: software
 authors:
-  - family-names: 代
-    given-names: 程宇
+  - family-names: Dai
+    given-names: Chengyu
     email: cangyiyiyiyi@gmail.com
-# TODO: 论文正式发表后补充其余作者、期刊/会议与 DOI，并在此处或下方加入
-#       preferred-citation 指向正式论文条目。
+    # Chinese name as it appears in the manuscript: 代程宇
+# TODO: once the paper is formally published, add the remaining authors, the
+#       venue and the DOI, and add a `preferred-citation` entry for the paper.
 repository-code: "https://github.com/cangyiyiyiyi-creator/UniformFusion"
 url: "https://github.com/cangyiyiyiyi-creator/UniformFusion"
 abstract: >-

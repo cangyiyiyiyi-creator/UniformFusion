@@ -1,4 +1,4 @@
-# models/modules/losses.py (完整替换)
+# models/modules/losses.py (full replacement)
 
 import torch
 import torch.nn as nn
@@ -9,7 +9,7 @@ from typing import List, Dict, Optional
 
 class DistillationLoss(nn.Module):
     """
-    知识蒸馏损失“总调度中心” (v2, 支持特征蒸馏)。
+    Knowledge-distillation loss hub (v2, with feature distillation).
     """
     def __init__(self, base_criterion: nn.Module, student_model: nn.Module, teacher_model: nn.Module,
                  kd_mode: str = 'logits', alpha: float = 0.5, beta: float = 1.0,
@@ -21,10 +21,10 @@ class DistillationLoss(nn.Module):
         self.student_model = student_model
         self.teacher_model = teacher_model
         self.kd_mode = kd_mode
-        self.alpha = alpha # 平衡因子 (硬损失)
-        self.beta = beta   # 平衡因子 (特征损失)
+        self.alpha = alpha # balancing factor (hard loss)
+        self.beta = beta   # balancing factor (feature loss)
 
-        # --- Logits / DKD 蒸馏器 ---
+        # --- logits / DKD distiller ---
         if kd_mode == 'logits':
             self.logits_distiller = LogitsDistillationLoss(tau=tau, class_weights=class_weights)
         elif kd_mode == 'dkd':
@@ -32,10 +32,10 @@ class DistillationLoss(nn.Module):
         else:
             self.logits_distiller = None
         
-        # --- 特征蒸馏器 ---
+        # --- feature distiller ---
         self.feature_distiller = None
         if feature_layers:
-            print("🔥 特征蒸馏已启用!")
+            print("feature distillation enabled")
             student_extractor = FeatureExtractor(student_model.backbone, feature_layers)
             teacher_extractor = FeatureExtractor(teacher_model.backbone, feature_layers)
             self.feature_distiller = FeatureLoss(student_extractor, teacher_extractor, adapter_configs)
@@ -62,11 +62,11 @@ class DistillationLoss(nn.Module):
         
         feature_loss = 0.0
         if self.feature_distiller:
-            # 假设双视角蒸馏时，只使用第一个视角进行特征匹配
+            # for dual-view distillation only the first view is used for feature matching
             feature_loss = self.feature_distiller(xa, xa)
 
-        # 最终损失组合: Hard + Soft + Feature
-        # alpha 控制硬损失权重，beta 控制特征损失权重，软损失权重由 1-alpha-beta 动态决定
+        # final loss combination: Hard + Soft + Feature
+        # alpha weights the hard loss, beta the feature loss; the soft loss weight follows from 1-alpha-beta
         soft_weight = max(1.0 - self.alpha - self.beta, 0.0)
         
         total_loss = self.alpha * hard_loss + soft_weight * soft_loss + self.beta * feature_loss

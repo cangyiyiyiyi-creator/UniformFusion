@@ -28,7 +28,7 @@ for item in "Plain_BCE|$PLAIN" "Uniform_Fusion|$UNIFORM" "DAGNet|$DAG" "ML_Decod
     done
   done
 done
-"$PY" tools/summarize_latency_sessions.py --input-dir "$RAW" --output-csv "$OUT/效率5Session汇总.csv"
-"$PY" tools/summarize_latency_sessions.py --input-dir "$PIPELINE" --output-csv "$OUT/完整流水线效率5Session汇总.csv"
+"$PY" tools/summarize_latency_sessions.py --input-dir "$RAW" --output-csv "$OUT/efficiency_5sessions_summary.csv"
+"$PY" tools/summarize_latency_sessions.py --input-dir "$PIPELINE" --output-csv "$OUT/full_pipeline_efficiency_5sessions_summary.csv"
 printf 'scopes=model_forward_amp,dataloader_h2d_model; sessions=5; repeats=100; batches=1,16\n' > "$OUT/protocol.txt"
 touch "$OUT/suite_complete.marker"

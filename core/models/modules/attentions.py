@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 # ==============================
-# 工具模块
+# utility modules
 # ==============================
 
 def _choose_groups(channels: int, groups: int) -> int:
@@ -35,7 +35,7 @@ class ConvBNAct(nn.Module):
 
 
 # ==============================
-# 原有注意力（保留）
+# previously existing attentions (kept)
 # ==============================
 
 class SEAttention(nn.Module):
@@ -86,18 +86,18 @@ class CBAM(nn.Module):
 
 
 # ==============================
-# 1. 论文级频率路由注意力
+# 1. paper-level frequency-routing attention
 # Complementary Frequency Routing Attention
 # ==============================
 
 class FrequencyRoutingAttention(nn.Module):
     """
-    论文级升级版：
-    1) same-size 低频提取，避免 shape 错位
-    2) 低频 / 高频互补分解
-    3) 通道组路由 + 空间路由
-    4) 预算守恒竞争：w_low + w_high = 1
-    5) 频率重组 + 安全残差
+    Paper-level upgraded version:
+    1) same-size low-frequency extraction to avoid shape misalignment
+    2) complementary low/high-frequency decomposition
+    3) channel-group routing + spatial routing
+    4) budget-conserving competition: w_low + w_high = 1
+    5) frequency recombination + safe residual
     """
 
     def __init__(
@@ -115,7 +115,7 @@ class FrequencyRoutingAttention(nn.Module):
 
         hidden = max(channels // reduction, 8)
 
-        # same-size 可学习低通
+        # same-size learnable low-pass filter
         self.low_pass = nn.Conv2d(
             channels,
             channels,
@@ -128,7 +128,7 @@ class FrequencyRoutingAttention(nn.Module):
         with torch.no_grad():
             self.low_pass.weight.fill_(1.0 / 9.0)
 
-        # 高频增强
+        # high-frequency enhancement
         self.high_proj = ConvBNAct(
             channels,
             channels,
@@ -138,7 +138,7 @@ class FrequencyRoutingAttention(nn.Module):
             act=False
         )
 
-        # 通道组路由 -> [B, 2g, 1, 1]
+        # channel-group routing -> [B, 2g, 1, 1]
         self.channel_router = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels * 2, hidden, 1, bias=False),
@@ -146,14 +146,14 @@ class FrequencyRoutingAttention(nn.Module):
             nn.Conv2d(hidden, self.groups * 2, 1, bias=True)
         )
 
-        # 空间路由 -> [B, 2, H, W]
+        # spatial routing -> [B, 2, H, W]
         self.spatial_router = nn.Sequential(
             nn.Conv2d(2, 16, 3, padding=1, bias=False),
             nn.GELU(),
             nn.Conv2d(16, 2, 1, bias=True)
         )
 
-        # 频率重组
+        # frequency recombination
         self.recompose = nn.Sequential(
             ConvBNAct(channels, channels, k=1, act=True),
             ConvBNAct(channels, channels, k=3, p=1, g=channels, act=False),
@@ -166,21 +166,21 @@ class FrequencyRoutingAttention(nn.Module):
         g = self.groups
         cg = self.group_channels
 
-        # 低频 / 高频互补分解
+        # complementary low/high-frequency decomposition
         low = self.low_pass(x)      # [B,C,H,W]
         high = x - low              # [B,C,H,W]
         high = self.high_proj(high) # [B,C,H,W]
 
-        # reshape 成 group 形式
+        # reshape into the group layout
         low_g = low.view(B, g, cg, H, W)    # [B,g,cg,H,W]
         high_g = high.view(B, g, cg, H, W)  # [B,g,cg,H,W]
 
-        # 通道路由
+        # channel routing
         ch_feat = torch.cat([low, high], dim=1)          # [B,2C,H,W]
         ch_logits = self.channel_router(ch_feat)         # [B,2g,1,1]
         ch_logits = ch_logits.view(B, g, 2, 1, 1)       # [B,g,2,1,1]
 
-        # 空间路由
+        # spatial routing
         spatial_stat = torch.cat([
             torch.mean(low, dim=1, keepdim=True),        # [B,1,H,W]
             torch.mean(high.abs(), dim=1, keepdim=True), # [B,1,H,W]
@@ -189,11 +189,11 @@ class FrequencyRoutingAttention(nn.Module):
         sp_logits = self.spatial_router(spatial_stat)    # [B,2,H,W]
         sp_logits = sp_logits.unsqueeze(1)               # [B,1,2,H,W]
 
-        # 联合 logits -> [B,g,2,H,W]
+        # joint logits -> [B,g,2,H,W]
         logits = ch_logits.expand(-1, -1, -1, H, W) + sp_logits.expand(-1, g, -1, -1, -1)
         weights = torch.softmax(logits, dim=2)
 
-        # 关键修复：加通道维，保证和 [B,g,cg,H,W] 正确 broadcast
+        # key fix: add the channel dimension so it broadcasts correctly against [B,g,cg,H,W]
         w_low = weights[:, :, 0].unsqueeze(2)    # [B,g,1,H,W]
         w_high = weights[:, :, 1].unsqueeze(2)   # [B,g,1,H,W]
 
@@ -205,17 +205,17 @@ class FrequencyRoutingAttention(nn.Module):
 
 
 # ==============================
-# 2. 论文级符极关系注意力
+# 2. paper-level polarity-relation attention
 # Support-Inhibit Polarity Attention
 # ==============================
 
 class PolarityAttention(nn.Module):
     """
-    论文级升级版：
-    1) 支持证据 / 抑制证据双分支
-    2) 正负响应分别建模
-    3) 通道门 + 空间门联合调制
-    4) 最后关系重组
+    Paper-level upgraded version:
+    1) dual branch for supporting / suppressing evidence
+    2) separate modelling of positive and negative responses
+    3) joint modulation by a channel gate and a spatial gate
+    4) final relation recombination
     """
     def __init__(self, channels, reduction=8, init_scale=1e-3):
         super().__init__()
@@ -256,13 +256,13 @@ class PolarityAttention(nn.Module):
         support = self.support_proj(F.relu(y))
         inhibit = self.inhibit_proj(F.relu(-y))
 
-        # 通道门
+        # channel gate
         ch_gate = self.channel_gate(torch.cat([support, inhibit], dim=1))
         ch_sup, ch_inh = torch.chunk(ch_gate, 2, dim=1)
         ch_sup = torch.sigmoid(ch_sup)
         ch_inh = torch.sigmoid(ch_inh)
 
-        # 空间门
+        # spatial gate
         sp_in = torch.cat([
             torch.mean(support, dim=1, keepdim=True),
             torch.max(support, dim=1, keepdim=True)[0],
@@ -281,17 +281,17 @@ class PolarityAttention(nn.Module):
 
 
 # ==============================
-# 3. 论文级原型路由注意力
+# 3. paper-level prototype-routing attention
 # Latent Prototype Routing Attention
 # ==============================
 
 class PrototypeRoutingAttention(nn.Module):
     """
-    论文级升级版：
-    1) 可学习原型字典
-    2) 归一化相似度分配
-    3) 图像级原型 gate
-    4) 原型重建 + 重组
+    Paper-level upgraded version:
+    1) learnable prototype dictionary
+    2) normalised similarity assignment
+    3) image-level prototype gate
+    4) prototype reconstruction + recombination
     """
     def __init__(self, channels, num_prototypes=8, temperature=1.0, reduction=8, init_scale=1e-3):
         super().__init__()
@@ -328,7 +328,7 @@ class PrototypeRoutingAttention(nn.Module):
         sim = torch.matmul(feat_n, proto.t()) / max(self.temperature, 1e-6)
         assign = F.softmax(sim, dim=-1)                # [B,N,P]
 
-        # 图像级 prototype gate
+        # image-level prototype gate
         p_gate = self.prototype_gate(x).flatten(2).transpose(1, 2)  # [B,1,P]
         p_gate = F.softmax(p_gate, dim=-1)
 
@@ -343,16 +343,16 @@ class PrototypeRoutingAttention(nn.Module):
 
 
 # ==============================
-# 4. 论文级自反馈注意力
+# 4. paper-level self-feedback attention
 # Confidence Feedback Attention
 # ==============================
 
 class SelfFeedbackAttention(nn.Module):
     """
-    论文级升级版：
-    1) 粗注意力 -> 置信图 -> 精注意力
-    2) 边界辅助约束
-    3) 二阶段反馈修正
+    Paper-level upgraded version:
+    1) coarse attention -> confidence map -> refined attention
+    2) boundary auxiliary constraint
+    3) two-stage feedback refinement
     """
     def __init__(self, channels, reduction=8, init_scale=1e-3):
         super().__init__()
@@ -393,16 +393,16 @@ class SelfFeedbackAttention(nn.Module):
 
 
 # ==============================
-# 5. 论文级粒度竞争注意力
+# 5. paper-level granularity-competition attention
 # Granularity Competition Attention
 # ==============================
 
 class GranularityAttention(nn.Module):
     """
-    论文级升级版：
-    1) 多感受野专家
-    2) 尺度竞争而不是简单求和
-    3) 通道级 + 空间级联合尺度分配
+    Paper-level upgraded version:
+    1) multi-receptive-field experts
+    2) scale competition instead of plain summation
+    3) joint channel-level and spatial-level scale assignment
     """
     def __init__(self, channels, kernel_sizes=(3, 5, 7), reduction=8, init_scale=1e-3):
         super().__init__()
@@ -451,7 +451,7 @@ class GranularityAttention(nn.Module):
         return x + self.scale(out)
 
 # ==============================
-# GSPF 辅助缓存：用于 V3 / Full 正则项
+# GSPF auxiliary cache: used by the V3 / Full regularisers
 # ==============================
 
 _GSPF_CACHE = {
@@ -465,8 +465,8 @@ def reset_gspf_cache():
 
 def push_gspf_stats(usage=None, prototypes=None):
     """
-    usage: [B, K]，表示每个样本的 prototype 使用分布
-    prototypes: [K, C] 或 [B, K, C]
+    usage: [B, K], the prototype usage distribution of every sample
+    prototypes: [K, C] or [B, K, C]
     """
     if usage is not None:
         _GSPF_CACHE["usage"].append(usage.detach() if not usage.requires_grad else usage)
@@ -485,13 +485,13 @@ def push_gspf_stats(usage=None, prototypes=None):
 
 def pop_gspf_regularization(lambda_consistency=0.0, lambda_ortho=0.0):
     """
-    返回 GSPF 正则项，并清空缓存。
-    注意：这里的 consistency 是多层 prototype usage 一致性。
-    若要严格双视角一致性，需要进一步改 dual 分支。
+    Return the GSPF regulariser and clear the cache.
+    Note: here consistency means multi-level prototype-usage consistency.
+    Strict dual-view consistency would require further changes in the dual branch.
     """
     total = None
 
-    # 多层 prototype 使用分布一致性
+    # multi-level prototype-usage consistency
     if lambda_consistency > 0 and len(_GSPF_CACHE["usage"]) >= 2:
         usages = _GSPF_CACHE["usage"]
         cons_loss = 0.0
@@ -507,7 +507,7 @@ def pop_gspf_regularization(lambda_consistency=0.0, lambda_ortho=0.0):
         cons_loss = cons_loss / max(count, 1)
         total = lambda_consistency * cons_loss if total is None else total + lambda_consistency * cons_loss
 
-    # prototype 正交多样性
+    # prototype orthogonality diversity
     if lambda_ortho > 0 and len(_GSPF_CACHE["ortho"]) > 0:
         ortho_loss = sum(_GSPF_CACHE["ortho"]) / len(_GSPF_CACHE["ortho"])
         total = lambda_ortho * ortho_loss if total is None else total + lambda_ortho * ortho_loss
@@ -527,7 +527,7 @@ def pop_gspf_regularization(lambda_consistency=0.0, lambda_ortho=0.0):
 class DynamicPrototypeRoutingAttention(nn.Module):
     """
     V1:
-    固定 prototype -> 动态 prototype
+    fixed prototype -> dynamic prototype
     P(x) = P0 + DeltaP(x)
     """
     def __init__(
@@ -554,7 +554,7 @@ class DynamicPrototypeRoutingAttention(nn.Module):
         self.base_prototypes = nn.Parameter(torch.randn(num_prototypes, channels))
         nn.init.normal_(self.base_prototypes, std=0.02)
 
-        # 根据当前图像生成 prototype 偏移
+        # generate a prototype offset from the current image
         self.proto_delta = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, hidden, 1, bias=False),
@@ -614,7 +614,7 @@ class DynamicPrototypeRoutingAttention(nn.Module):
 class GSPFAttention(nn.Module):
     """
     V2:
-    多粒度尺度分支 + 动态 prototype 分支 + 尺度-原型耦合门控
+    multi-granularity scale branch + dynamic prototype branch + scale-prototype coupling gate
     """
     def __init__(
         self,
@@ -762,13 +762,13 @@ class DynamicPrototypeRoutingAttentionRecord(DynamicPrototypeRoutingAttention):
 
 class ProtoGSPFResidualAttention(nn.Module):
     """
-    Proto 主导 + GSPF 小残差增强。
+    Proto dominant + small GSPF residual.
 
-    原来的 GSPF 直接替代 Proto，容易破坏 ProtoRoute 的稳定性。
-    这里改为：
+    The original GSPF replaced Proto directly, which easily destabilises ProtoRoute.
+    The variant here instead:
         Y = Proto(X) + alpha * (GSPF(X) - X)
 
-    alpha 初始值很小，默认 1e-3。
+    alpha starts very small, 1e-3 by default.
     """
     def __init__(self, channels, alpha_init=1e-3, **kwargs):
         super().__init__()
@@ -789,8 +789,8 @@ class ProtoGSPFResidualAttention(nn.Module):
 
 class ZeroInitDWAdapter(nn.Module):
     """
-    极小残差适配器：depthwise 3x3 + pointwise 1x1 + BN。
-    关键：pointwise 和 BN gamma 零初始化，使初始 delta ≈ 0，整体初始几乎等价于 R2。
+    Tiny residual adapter: depthwise 3x3 + pointwise 1x1 + BN.
+    Key detail: the pointwise and BN gamma are zero-initialised, so the initial delta is ~0 and the model starts out equivalent to R2.
     """
     def __init__(self, channels, kernel_size=3):
         super().__init__()
@@ -811,17 +811,17 @@ class ZeroInitDWAdapter(nn.Module):
 
 class LiquidAdapterPGSPRAttention(nn.Module):
     """
-    Liquid-Adapter PG-SPR：推荐优先测试。
+    Liquid-Adapter PG-SPR: recommended as the first variant to test.
 
-    原始 R2:
+    Original R2:
         Y_R2 = A_proto(X) + alpha * (A_gspf(X) - X)
 
-    新增极小液态适配器:
+    Added tiny liquid adapter:
         Delta = Adapter(Y_R2)
         lambda(X) = 1 + beta * tanh(g(X) / tau(X) - c0)
         Y = Y_R2 + eps * lambda(X) * Delta
 
-    设计目标：不改写 R2 主分支，只在 R2 后面加一个零初始化小扰动。
+    Design goal: never rewrite the R2 main branch, only append a zero-initialised small perturbation after it.
     """
     def __init__(
         self,
@@ -854,7 +854,7 @@ class LiquidAdapterPGSPRAttention(nn.Module):
         self.fc_gate = nn.Conv2d(hidden, channels, 1, bias=True)
         self.fc_tau = nn.Conv2d(hidden, channels, 1, bias=True)
 
-        # 零初始化：gate=0.5, tau=中间值，且 centered 后初始 lambda≈1
+        # zero initialisation: gate=0.5, tau=mid value, and after centering the initial lambda is ~1
         nn.init.zeros_(self.fc_gate.weight)
         nn.init.zeros_(self.fc_gate.bias)
         nn.init.zeros_(self.fc_tau.weight)
@@ -895,11 +895,11 @@ class WeakLiquidAdapterPGSPRAttention(nn.Module):
         lambda_weak = 1 + beta_weak * tanh(weak_ch)
         Y = Y_R2 + eps * lambda_liq(X) * lambda_weak * Delta
 
-    设计目标：
-        1) 保留 R2 主分支；
-        2) Adapter 仍然零初始化，初始几乎等价于 R2；
-        3) 用 weak-class prior 生成通道级弱类调制，引导 Adapter 更关注弱类相关证据；
-        4) 不改 loss，不改 dual wrapper，显存风险小。
+    Design goal:
+        1) keep the R2 main branch;
+        2) the adapter stays zero-initialised so the start is nearly equivalent to R2;
+        3) use the weak-class prior to build a channel-level weak-class modulation that steers the adapter towards weak-class evidence;
+        4) no change to the loss or the dual wrapper, so the memory risk is small.
     """
     def __init__(
         self,
@@ -944,13 +944,13 @@ class WeakLiquidAdapterPGSPRAttention(nn.Module):
         self.fc_gate = nn.Conv2d(hidden, channels, 1, bias=True)
         self.fc_tau = nn.Conv2d(hidden, channels, 1, bias=True)
 
-        # 类别-通道关联：C_cls × C_feat。
-        # 由 weak_prior 汇聚成弱类通道偏置，初始化很小，避免破坏 R2。
+        # class-channel association: C_cls x C_feat.
+        # weak_prior is aggregated into a weak-class channel bias with a tiny initial scale so R2 is not disturbed.
         self.class_channel_link = nn.Parameter(torch.zeros(num_classes, channels))
         nn.init.normal_(self.class_channel_link, std=0.01)
         self.beta_weak = nn.Parameter(torch.tensor(float(beta_weak_init)))
 
-        # 初始化液态分支为中性状态：lambda_liq ≈ 1
+        # initialise the liquid branch to a neutral state: lambda_liq ~ 1
         nn.init.zeros_(self.fc_gate.weight)
         nn.init.zeros_(self.fc_gate.bias)
         nn.init.zeros_(self.fc_tau.weight)
@@ -984,10 +984,10 @@ class WeakLiquidAdapterPGSPRAttention(nn.Module):
         return weak_lambda.view(1, self.channels, 1, 1)
 
     def forward(self, x):
-        # R2 主分支完全保留
+        # the R2 main branch is fully preserved
         y_r2 = self.proto(x) + self.alpha * (self.gspf(x) - x)
 
-        # 零初始化 Adapter 小残差
+        # zero-initialised small adapter residual
         delta = self.adapter(y_r2)
         lam_liq = self._liquid_lambda(y_r2)
         lam_weak = self._weak_lambda(y_r2)
@@ -997,12 +997,12 @@ class WeakLiquidAdapterPGSPRAttention(nn.Module):
 
 class LGPGSPRv2Attention(nn.Module):
     """
-    LG-PGSPR-v2：比旧 LG-PGSPR 更保守。
+    LG-PGSPR-v2: more conservative than the old LG-PGSPR.
 
-    与旧 LG 的区别：
-    1) 不再对 residual 做额外 1x1 recompose，减少破坏 R2 残差；
-    2) lambda 围绕 1 小幅波动；
-    3) gate/tau 最后一层零初始化，初始近似 R2。
+    Differences from the old LG:
+    1) no extra 1x1 recompose on the residual, so the R2 residual is disturbed less;
+    2) lambda fluctuates slightly around 1;
+    3) the last layer of gate/tau is zero-initialised, so the start is close to R2.
     """
     def __init__(
         self,
@@ -1065,23 +1065,23 @@ class LGPGSPRv2Attention(nn.Module):
 
 # ==============================
 # Weak-Class Guided Attention
-# 弱类引导注意力调制
+# weak-class guided attention modulation
 # ==============================
 
 # ==============================
 # DWR: Difficulty-aware Weak-class Expert Routing Attention
-# 难度感知弱类专家路由注意力
+# difficulty-aware weak-class expert routing attention
 # ==============================
 
 def _make_weak_prior(num_classes=15, weak_indices=(1, 4, 5, 8)):
     """
-    默认弱类索引：
+    default weak-class indices:
     1: Knife
     4: Scissors
     5: Lighter
     8: Razor_blade
 
-    如果 classes.txt 顺序不同，需要改 weak_indices。
+    change weak_indices if the order in classes.txt differs.
     """
     prior = torch.zeros(num_classes, dtype=torch.float32)
     for idx in weak_indices:
@@ -1098,15 +1098,15 @@ class DifficultyWeakRoutingAttention(nn.Module):
     """
     DWR: Difficulty-aware Weak-class Expert Routing Attention
 
-    三个专家：
+    three experts:
       E1: ProtoRoute
       E2: ProtoGSPFResidual
       E3: WeakClassPrototypeRouting
 
-    动态路由：
+    dynamic routing:
       router_logits = MLP(GAP(X)) + beta * difficulty(X) * weak_class_expert_bias
 
-    输出：
+    Output:
       Y = X + LayerScale( sum_e w_e * (E_e(X) - X) )
     """
     def __init__(
@@ -1129,11 +1129,11 @@ class DifficultyWeakRoutingAttention(nn.Module):
             persistent=False
         )
 
-        # 三个专家
+        # the three experts
         self.expert_proto = PrototypeRoutingAttention(channels)
         self.expert_gspf = ProtoGSPFResidualAttention(channels)
 
-        # 这里要求你前面已经加过 WeakClassPrototypeRoutingAttention
+        # requires WeakClassPrototypeRoutingAttention to be defined above
         self.expert_wcproto = WeakClassPrototypeRoutingAttention(
             channels,
             num_classes=num_classes,
@@ -1142,7 +1142,7 @@ class DifficultyWeakRoutingAttention(nn.Module):
 
         hidden = max(channels // reduction, 8)
 
-        # 图像特征驱动的专家路由
+        # image-feature driven expert routing
         self.router = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, hidden, 1, bias=False),
@@ -1150,7 +1150,7 @@ class DifficultyWeakRoutingAttention(nn.Module):
             nn.Conv2d(hidden, self.num_experts, 1, bias=True)
         )
 
-        # 当前特征难度估计，输出 [B,1]
+        # difficulty estimate of the current features, output [B,1]
         self.difficulty_head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, hidden, 1, bias=False),
@@ -1159,7 +1159,7 @@ class DifficultyWeakRoutingAttention(nn.Module):
             nn.Sigmoid()
         )
 
-        # 类别-专家关联矩阵：C × E
+        # class-expert association matrix: C x E
         self.class_expert_link = nn.Parameter(torch.zeros(num_classes, self.num_experts))
         nn.init.normal_(self.class_expert_link, std=0.02)
 
@@ -1170,7 +1170,7 @@ class DifficultyWeakRoutingAttention(nn.Module):
         """
         weak_prior: [C]
         class_expert_link: [C, E]
-        输出 expert_bias: [E]
+        outputs expert_bias: [E]
         """
         link = F.softmax(self.class_expert_link, dim=-1)
         weak_prior = self.weak_prior.to(device=x.device, dtype=x.dtype)
@@ -1182,8 +1182,8 @@ class DifficultyWeakRoutingAttention(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
 
-        # 三个专家本身已经是残差形式：Y_e = X + delta_e
-        # 所以这里直接对完整专家输出做加权平均，不再额外 LayerScale
+        # the three experts are already residual: Y_e = X + delta_e
+        # so the full expert outputs are averaged directly, without an extra LayerScale
         y_proto = self.expert_proto(x)
         y_gspf = self.expert_gspf(x)
         y_wcproto = self.expert_wcproto(x)
@@ -1210,16 +1210,16 @@ class DifficultyWeakRoutingAttention(nn.Module):
 
 class WeakClassPrototypeRoutingAttention(nn.Module):
     """
-    弱类引导的原型路由注意力。
+    Weak-class guided prototype-routing attention.
 
-    核心思想：
-    原始 ProtoRoute:
+    Core idea:
+    original ProtoRoute:
         alpha_{i,k} = softmax(sim(x_i, p_k))
 
-    弱类调制后:
+    after weak-class modulation:
         alpha'_{i,k} = softmax(sim(x_i, p_k) + beta * b_k)
 
-    其中 b_k 由 weak-class prior 通过 class-prototype link 映射得到。
+    where b_k comes from the weak-class prior through a class-prototype link.
     """
     def __init__(
         self,
@@ -1249,7 +1249,7 @@ class WeakClassPrototypeRoutingAttention(nn.Module):
         self.prototypes = nn.Parameter(torch.randn(num_prototypes, channels))
         nn.init.normal_(self.prototypes, std=0.02)
 
-        # 类别-原型关联矩阵：C × K
+        # class-prototype association matrix: C x K
         self.class_proto_link = nn.Parameter(torch.zeros(num_classes, num_prototypes))
         nn.init.normal_(self.class_proto_link, std=0.02)
 
@@ -1312,11 +1312,11 @@ class WeakClassPrototypeRoutingAttention(nn.Module):
 
 class WeakClassGranularityAttention(nn.Module):
     """
-    弱类引导的粒度竞争注意力。
+    Weak-class guided granularity-competition attention.
 
-    核心思想：
-    对 N3 的 3×3 / 5×5 / 7×7 多粒度分支加入 weak-class scale bias。
-    弱类越重要，模型越倾向于细粒度和中粒度分支。
+    Core idea:
+    Adds a weak-class scale bias to the 3x3 / 5x5 / 7x7 multi-granularity branches of N3.
+    The more important a weak class is, the more the model favours the fine and medium granularity branches.
     """
     def __init__(
         self,
@@ -1362,11 +1362,11 @@ class WeakClassGranularityAttention(nn.Module):
             nn.Conv2d(hidden, self.num_scales, 1, bias=True)
         )
 
-        # 类别-尺度关联矩阵：C × S
+        # class-scale association matrix: C x S
         self.class_scale_link = nn.Parameter(torch.zeros(num_classes, self.num_scales))
         nn.init.normal_(self.class_scale_link, std=0.02)
 
-        # 固定弱类细粒度先验：偏向 3×3 / 5×5，抑制 7×7
+        # fixed weak-class fine-granularity prior: favour 3x3 / 5x5, suppress 7x7
         base_bias = torch.tensor([0.10, 0.05, -0.15], dtype=torch.float32)
         if self.num_scales != 3:
             base_bias = torch.zeros(self.num_scales, dtype=torch.float32)
@@ -1412,22 +1412,22 @@ class DifficultyWeakRoutingV2Attention(nn.Module):
     """
     DWR-V2: R2-dominant Difficulty-aware Dual-Expert Routing Attention
 
-    两个专家：
+    two experts:
       E1: ProtoRoute
       E2: ProtoGSPFResidual
 
-    设计目的：
-      1) 保留 R2 的稳定优势；
-      2) 去掉不稳定的 WCProto 专家；
-      3) 用 difficulty gate 动态决定 Proto 与 ProtoGSPFResidual 的比例。
+    Design purpose:
+      1) keep the stability advantage of R2;
+      2) drop the unstable WCProto expert;
+      3) let a difficulty gate decide the ratio between Proto and ProtoGSPFResidual dynamically.
 
-    输出：
+    Output:
       Y = w1 * E_proto(X) + w2 * E_gspfres(X)
 
-    因为每个专家本身都是残差形式：
+    Since every expert is residual by construction:
       E(X) = X + delta
 
-    所以最终仍然是：
+    the final form is still:
       Y = X + w1 * delta_proto + w2 * delta_gspfres
     """
     def __init__(
@@ -1450,13 +1450,13 @@ class DifficultyWeakRoutingV2Attention(nn.Module):
             persistent=False
         )
 
-        # 双专家：Proto + R2
+        # two experts: Proto + R2
         self.expert_proto = PrototypeRoutingAttention(channels)
         self.expert_gspfres = ProtoGSPFResidualAttention(channels)
 
         hidden = max(channels // reduction, 8)
 
-        # 图像特征驱动的专家路由
+        # image-feature driven expert routing
         self.router = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, hidden, 1, bias=False),
@@ -1464,12 +1464,12 @@ class DifficultyWeakRoutingV2Attention(nn.Module):
             nn.Conv2d(hidden, self.num_experts, 1, bias=True)
         )
 
-        # 初始化时略微偏向 R2 专家，避免一开始被 Proto 稀释
+        # bias the initialisation slightly towards the R2 expert so Proto does not dilute it early on
         with torch.no_grad():
             self.router[3].bias.data[0] = 0.0
             self.router[3].bias.data[1] = float(router_bias_init)
 
-        # 当前样本难度估计
+        # difficulty estimate of the current sample
         self.difficulty_head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, hidden, 1, bias=False),
@@ -1478,14 +1478,14 @@ class DifficultyWeakRoutingV2Attention(nn.Module):
             nn.Sigmoid()
         )
 
-        # 类别-专家关联矩阵：C × 2
+        # class-expert association matrix: C x 2
         self.class_expert_link = nn.Parameter(torch.zeros(num_classes, self.num_experts))
         nn.init.normal_(self.class_expert_link, std=0.02)
 
-        # 弱类难度调制强度
+        # weak-class difficulty modulation strength
         self.beta = nn.Parameter(torch.tensor(float(beta_init)))
 
-        # 固定基础偏置：难样本略微偏向 GSPFRes
+        # fixed base bias: hard samples lean slightly towards GSPFRes
         base_bias = torch.tensor([-0.05, 0.05], dtype=torch.float32)
         self.register_buffer("base_expert_bias", base_bias, persistent=False)
 
@@ -1493,7 +1493,7 @@ class DifficultyWeakRoutingV2Attention(nn.Module):
         """
         weak_prior: [C]
         class_expert_link: [C, 2]
-        输出 expert_bias: [2]
+        outputs expert_bias: [2]
         """
         link = F.softmax(self.class_expert_link, dim=-1)
         weak_prior = self.weak_prior.to(device=x.device, dtype=x.dtype)
@@ -1536,7 +1536,7 @@ class GSPFAttentionRecord(GSPFAttention):
         super().__init__(*args, **kwargs)
 
 # ==============================
-# 注册表
+# registry
 # ==============================
 
 ATTENTION_REGISTRY = {

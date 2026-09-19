@@ -1,4 +1,4 @@
-# models/modules/augmentations.py (最终完整版)
+# models/modules/augmentations.py (final, complete version)
 
 import random
 from PIL import Image, ImageOps, ImageEnhance
@@ -6,7 +6,7 @@ import torch
 from torchvision import transforms
 
 # ==============================================================================
-#  增强操作的具体实现 (供两个模块共同使用)
+#  concrete implementations of the augmentation ops (shared by both modules)
 # ==============================================================================
 def _apply_op(img: Image.Image, op_name: str, magnitude: float, interpolation, fill):
     if op_name == "Identity": return img
@@ -25,11 +25,11 @@ def _apply_op(img: Image.Image, op_name: str, magnitude: float, interpolation, f
     elif op_name == "Equalize": return ImageOps.equalize(img)
     else: raise ValueError(f"Unknown operation {op_name}")
 
-# --- 定义完整的操作空间 ---
+# --- define the full operation space ---
 AUGMENTATION_SPACE = {
-    # 操作名: (强度下限, 强度上限)
+    # op name: (min strength, max strength)
     "ShearX": (-0.3, 0.3), "ShearY": (-0.3, 0.3),
-    "TranslateX": (-150.0 / 331.0, 150.0 / 331.0), # 强度表示为图像尺寸的百分比
+    "TranslateX": (-150.0 / 331.0, 150.0 / 331.0), # strength expressed as a fraction of the image size
     "TranslateY": (-150.0 / 331.0, 150.0 / 331.0),
     "Rotate": (-30.0, 30.0), "Brightness": (0.05, 0.95),
     "Color": (0.05, 0.95), "Contrast": (0.05, 0.95),
@@ -39,13 +39,13 @@ AUGMENTATION_SPACE = {
 }
 
 # ==============================
-# 模块一: RandAugment
+# module 1: RandAugment
 # ==============================
 class RandAugment(torch.nn.Module):
     def __init__(self, n: int, m: int, interpolation=Image.BICUBIC, fill=None):
         super().__init__()
-        self.n = n # 每次随机选择 n 个操作
-        self.m = m # 所有操作的强度 (0-30)
+        self.n = n # randomly pick n operations each time
+        self.m = m # strength applied to all operations (0-30)
         self.interpolation = interpolation
         self.fill = fill
         self.op_list = list(AUGMENTATION_SPACE.keys())
@@ -54,10 +54,10 @@ class RandAugment(torch.nn.Module):
         ops = random.choices(self.op_list, k=self.n)
         for op_name in ops:
             min_val, max_val = AUGMENTATION_SPACE[op_name]
-            # 根据强度 M (0-30)，计算出当前操作的具体参数值
+            # derive the concrete argument of the current op from the strength M (0-30)
             magnitude = (float(self.m) / 30.0) * (max_val - min_val) + min_val
             
-            # 特殊处理 Translate, 因为它的强度是像素值
+            # Translate is special because its strength is a pixel count
             if op_name.startswith("Translate"):
                 magnitude *= img.size[0] if op_name.endswith("X") else img.size[1]
 
@@ -65,7 +65,7 @@ class RandAugment(torch.nn.Module):
         return img
 
 # ==============================
-# 模块二: TrivialAugmentWide
+# module 2: TrivialAugmentWide
 # ==============================
 class TrivialAugmentWide(torch.nn.Module):
     def __init__(self, num_magnitude_bins=31, interpolation=Image.BICUBIC, fill=None):

@@ -90,7 +90,7 @@ class GSPFRegularizedCriterion(nn.Module):
         return total_loss
 
 def build_base_criterion(args) -> nn.Module:
-    """根据 --base_loss 选择基础监督损失；保持多标签场景默认 BCE。"""
+    """Select the base supervised loss from --base_loss; BCE stays the multi-label default."""
     if args.base_loss == 'bce':
         return nn.BCEWithLogitsLoss()
     elif args.base_loss == 'mlsm':
@@ -142,14 +142,14 @@ def build_base_criterion(args) -> nn.Module:
 
 def resolve_attention_config(name):
     ATTN_MAP = {
-        # ===== 原有 =====
+        # ===== originally present =====
         "granularity": {"N3": "granularity", "N4": "granularity", "N5": "granularity"},
         "proto_route": {"N3": "proto_route", "N4": "proto_route", "N5": "proto_route"},
         "freq_route": {"N3": "freq_route", "N4": "freq_route", "N5": "freq_route"},
         "polarity": {"N3": "polarity", "N4": "polarity", "N5": "polarity"},
         "self_feedback": {"N3": "self_feedback", "N4": "self_feedback", "N5": "self_feedback"},
 
-        # ===== 你之前已有 =====
+        # ===== previously added =====
         "n3_freq_n4_proto_n5_gran": {
             "N3": "freq_route", "N4": "proto_route", "N5": "granularity"
         },
@@ -164,7 +164,7 @@ def resolve_attention_config(name):
             "N5": "self_feedback",
         },
 
-        # ===== ✅ 你新加的12组 =====
+        # ===== 12 combinations added later =====
         "n3_gran_n4_gran_n5_proto": {
             "N3": "granularity", "N4": "granularity", "N5": "proto_route"
         },
@@ -216,35 +216,35 @@ def resolve_attention_config(name):
         # GSPF version study
         # ==============================
 
-        # E0: 当前强基线
+        # E0: current strong baseline
         "baseline_gran_proto_gran": {
             "N3": "granularity",
             "N4": "proto_route",
             "N5": "granularity",
         },
 
-        # V1: 只把 N4 的固定 Proto 换成动态 Proto
+        # V1: replace only N4's fixed Proto with a dynamic Proto
         "v1_gran_dynproto_gran": {
             "N3": "granularity",
             "N4": "dynamic_proto",
             "N5": "granularity",
         },
 
-        # V2: 只在 N4 使用 GSPF，最推荐先跑这个
+        # V2: GSPF on N4 only; the recommended starting point
         "v2_gran_gspf_gran": {
             "N3": "granularity",
             "N4": "gspf",
             "N5": "granularity",
         },
 
-        # V2-full-arch: 全层都用 GSPF
+        # V2-full-arch: GSPF on every level
         "v2_gspf_all": {
             "N3": "gspf",
             "N4": "gspf",
             "N5": "gspf",
         },
 
-        # V2-alt: N3/N5 用 GSPF，N4 保留 Proto
+        # V2-alt: GSPF on N3/N5, Proto kept on N4
         "v2_gspf_proto_gspf": {
             "N3": "gspf",
             "N4": "proto_route",
@@ -257,14 +257,14 @@ def resolve_attention_config(name):
             "N5": "granularity",
         },
 
-        # Full: 结构和 V2 一样，区别是命令里同时打开 consistency + ortho loss
+        # Full: same architecture as V2, but the command also enables consistency + ortho loss
         "full_gran_gspf_gran": {
             "N3": "granularity",
             "N4": "gspf_reg",
             "N5": "granularity",
         },
 
-        # Proto 主导 + GSPF 小残差增强
+        # Proto dominant + small GSPF residual
         "v2_gran_proto_gspfres_gran": {
             "N3": "granularity",
             "N4": "proto_gspf_residual",
@@ -287,29 +287,29 @@ def resolve_attention_config(name):
         # Weak-Class Guided Attention
         # ==============================
 
-        # W1：只在 N4 做弱类原型调制，N3 保持普通 Gran，N5 不加注意力
+        # W1: weak-class proto modulation on N4 only; N3 keeps plain Gran, no attention on N5
         "w1_gran_wcproto_none": {
             "N3": "granularity",
             "N4": "wc_proto_route",
             "N5": None,
         },
 
-        # W2：N3 做弱类粒度调制，N4 做弱类原型调制，N5 不加注意力
-        # 这是后续最值得主推的结构
+        # W2: weak-class granularity modulation on N3, weak-class proto modulation on N4, no attention on N5
+        # this is the most promising structure for follow-up work
         "w2_wcgran_wcproto_none": {
             "N3": "wc_granularity",
             "N4": "wc_proto_route",
             "N5": None,
         },
 
-        # W3：只改 N3，N4 仍用普通 Proto，用于消融
+        # W3: only N3 changed, N4 keeps plain Proto (used for ablation)
         "w3_wcgran_proto_none": {
             "N3": "wc_granularity",
             "N4": "proto_route",
             "N5": None,
         },
 
-        # W4：弱类调制但保留 N5 Gran，看 N5 是否继续干扰
+        # W4: weak-class modulation while keeping N5 Gran, to see whether N5 still interferes
         "w4_wcgran_wcproto_gran": {
             "N3": "wc_granularity",
             "N4": "wc_proto_route",
@@ -320,22 +320,22 @@ def resolve_attention_config(name):
         # DWR: Difficulty-aware Weak-class Expert Routing
         # ==============================
 
-        # DWR 主推结构：
-        # N3 保留稳定 Granularity，N4 使用动态弱类专家路由，N5 不加注意力
+        # DWR recommended structure:
+        # N3 keeps stable Granularity, N4 uses difficulty-aware weak-class expert routing, no attention on N5
         "dwr_gran_dwr_none": {
             "N3": "granularity",
             "N4": "dwr_route",
             "N5": None,
         },
 
-        # 消融1：DWR + N5 Gran，看高层注意力是否有帮助
+        # ablation 1: DWR + N5 Gran, to test whether high-level attention helps
         "dwr_gran_dwr_gran": {
             "N3": "granularity",
             "N4": "dwr_route",
             "N5": "granularity",
         },
 
-        # 消融2：N3 也使用弱类粒度调制
+        # ablation 2: weak-class granularity modulation on N3 as well
         "dwr_wcgran_dwr_none": {
             "N3": "wc_granularity",
             "N4": "dwr_route",
@@ -381,14 +381,14 @@ def resolve_attention_config(name):
         # DWR-V2: R2-dominant dual-expert routing
         # ==============================
 
-        # 主推版本：N3 保留 Gran，N4 使用 DWR-V2，N5 不加注意力
+        # recommended variant: N3 keeps Gran, N4 uses DWR-V2, no attention on N5
         "dwr2_gran_dwr2_none": {
             "N3": "granularity",
             "N4": "dwr2_route",
             "N5": None,
         },
 
-        # 消融版本：DWR-V2 + N5 Gran
+        # ablation variant: DWR-V2 + N5 Gran
         "dwr2_gran_dwr2_gran": {
             "N3": "granularity",
             "N4": "dwr2_route",
@@ -402,7 +402,7 @@ def resolve_attention_config(name):
 
     if name not in ATTN_MAP:
         raise ValueError(
-            f"未知的 --attention_name: {name}. 可选值: {', '.join(sorted(ATTN_MAP.keys()))}"
+            f"unknown --attention_name: {name}. Available: {', '.join(sorted(ATTN_MAP.keys()))}"
         )
 
     return ATTN_MAP[name]
@@ -411,7 +411,7 @@ def resolve_attention_config(name):
 def append_summary_to_global_log(args, best_metric_value, metric_name, model_total_params,
                                  class_names, per_class_ap_list):
     """
-    将本次实验的最终总结（包含 per-class AP），追加写入到全局日志文件中。
+    Append the final summary of this experiment (including per-class AP) to the global log file.
     """
     summary_file_path = Path(getattr(args, "summary_csv", "viewaware_llm_5seed_detailed.csv"))
     summary_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -457,9 +457,9 @@ def append_summary_to_global_log(args, best_metric_value, metric_name, model_tot
             if not file_exists:
                 writer.writeheader()
             writer.writerow(summary_data)
-        print(f"📈 最终结果（含Per-Class AP）已成功追加到总成绩表: {summary_file_path}")
+        print(f"[summary] final results (with per-class AP) appended to: {summary_file_path}")
     except Exception as e:
-        print(f"❌ 写入总成绩表时发生错误: {e}")
+        print(f"[summary] ERROR while writing the summary table: {e}")
 
 
 def set_seed(seed: int = 42, deterministic: bool = False):
@@ -546,9 +546,9 @@ def _load_finetune_weights(model: nn.Module, ckpt_path: str, prefix: str = ''):
         with open(os.path.join(save_root, "finetune_unexpected_keys.txt"), "w") as f:
             for k in _unexpected:
                 f.write(k + "\n")
-        print(f"[finetune] 已将缺失/意外键清单写入到: {save_root}/finetune_*_keys.txt")
+        print(f"[finetune] missing/unexpected key lists written to: {save_root}/finetune_*_keys.txt")
     except Exception as e:
-        print(f"[finetune] ⚠️ 保存缺失/意外键清单失败: {e}")
+        print(f"[finetune] WARNING: failed to save the missing/unexpected key lists: {e}")
 
     if skipped_shape:
         print("[finetune] first few shape-mismatch keys:")
@@ -594,7 +594,7 @@ def _try_build_loaders_with_project(args):
             multiprocessing_context='spawn'
         )
         return train_loader, val_loader, getattr(train_ds, "class_names", None)
-    raise RuntimeError("datasets.py 缺少构建函数（build_loaders/...），请保留工程里的数据集逻辑。")
+    raise RuntimeError("datasets.py has no loader builder (build_loaders/...); keep the dataset logic of the project.")
 
 
 def get_args_parser():
@@ -633,8 +633,8 @@ def get_args_parser():
     parser.add_argument('--num_workers', type=int, default=8)
 
     parser.add_argument('--finetune', default='')
-    parser.add_argument('--model_prefix', default='', help="加前缀")
-    parser.add_argument("--model_mount", type=str, default="", help="可选：统一挂在到某子模块前")
+    parser.add_argument('--model_prefix', default='', help="prefix added to the model name")
+    parser.add_argument("--model_mount", type=str, default="", help="optional: mount everything in front of a submodule")
 
     parser.add_argument('--dual_view', default=True, type=U.str2bool)
     parser.add_argument(
@@ -663,13 +663,13 @@ def get_args_parser():
     parser.add_argument('--attention_config', type=str, default=None,
                         help='[Legacy] JSON string for complex attention configurations. Prefer --attention_name.')
 
-    parser.add_argument('--xattn_heads', default=4, type=int, help='仅 fuse_mode=xattn 时使用')
-    parser.add_argument('--xattn_reduction', default=4, type=int, help='空间下采样因子，2/4/8')
-    parser.add_argument('--fpn_out_channels', default=256, type=int, help='FPN输出通道数')
+    parser.add_argument('--xattn_heads', default=4, type=int, help='only used when fuse_mode=xattn')
+    parser.add_argument('--xattn_reduction', default=4, type=int, help='spatial downsampling factor, 2/4/8')
+    parser.add_argument('--fpn_out_channels', default=256, type=int, help='number of FPN output channels')
 
-    # 视觉-语义多模态辅助分支：默认关闭，打开后不改变原 R2 主分类头，只加 semantic logits 小权重融合
+    # vision-semantic auxiliary branch: off by default; when enabled the original R2 head is untouched and only a small-weight semantic-logit fusion is added
     parser.add_argument('--use_semantic_branch', default=False, type=U.str2bool,
-                        help='启用 R2 + Semantic Class Embedding 视觉-语义辅助分支')
+                        help='enable the R2 + Semantic Class Embedding vision-semantic auxiliary branch')
     parser.add_argument('--sem_aux_only', default=False, type=U.str2bool,
                         help='Use semantics only as a training loss; validation and inference logits remain pure R2')
     parser.add_argument('--sem_dim', default=256, type=int,
@@ -1121,10 +1121,10 @@ def get_args_parser():
     parser.add_argument('--ema_device', default='cpu')
     parser.add_argument('--fsdp_cpu_offload', default=False, type=U.str2bool)
 
-    parser.add_argument('--resume', default='', help='从检查点恢复训练 (checkpoint_last.pth 或 checkpoint_best.pth)')
-    parser.add_argument('--resume_epoch', default=-1, type=int, help='从指定epoch开始（默认自动检测）')
-    parser.add_argument('--resume_optimizer', default=True, type=U.str2bool, help='是否恢复优化器状态')
-    parser.add_argument('--resume_scheduler', default=True, type=U.str2bool, help='是否恢复学习率调度器')
+    parser.add_argument('--resume', default='', help='resume training from a checkpoint (checkpoint_last.pth or checkpoint_best.pth)')
+    parser.add_argument('--resume_epoch', default=-1, type=int, help='start from a given epoch (auto-detected by default)')
+    parser.add_argument('--resume_optimizer', default=True, type=U.str2bool, help='restore the optimizer state')
+    parser.add_argument('--resume_scheduler', default=True, type=U.str2bool, help='restore the LR scheduler state')
 
     parser.add_argument('--use_distillation', type=U.str2bool, default=False)
     parser.add_argument('--teacher_model', type=str, default='convnext_small')
@@ -1139,7 +1139,7 @@ def get_args_parser():
 
     parser.add_argument('--base_loss', type=str, default='bce',
                         choices=['bce', 'mlsm', 'focal', 'asl', 'fals', 'mcb', 'gebce', 'dals', 'mcb_convex'],
-                        help='选择基础监督损失：bce / mlsm / focal / asl / fals / mcb / gebce / dals / mcb_convex')
+                        help='base supervised loss: bce / mlsm / focal / asl / fals / mcb / gebce / dals / mcb_convex')
 
     parser.add_argument('--focal_gamma', type=float, default=2.0)
     parser.add_argument('--focal_alpha', type=float, default=None)
@@ -1172,7 +1172,7 @@ def get_args_parser():
     parser.add_argument('--mcb_wmin', type=float, default=1e-3)
 
     parser.add_argument('--ge_trainable', type=U.str2bool, default=False,
-                        help='GE 正则是否参与反传（true=非凸；false=仅诊断）')
+                        help='whether the GE regulariser participates in backprop (true=non-convex; false=diagnostics only)')
 
     parser.add_argument('--aug_mode', default='standard',
                         choices=['none', 'standard', 'conditional', 'conditional_4', 'rand_aug', 'trivial_aug'],
@@ -1202,9 +1202,9 @@ def get_args_parser():
     parser.add_argument('--cv_lambda_geo', type=float, default=0.0,
                         help='CV-GSC: cross-view geometry response consistency loss weight')
     parser.add_argument('--use_cv_gsc', default=False, type=U.str2bool,
-                        help='是否启用 CV-GSC 跨视角几何-语义一致性模块')
+                        help='enable the CV-GSC cross-view geometry-semantics consistency module')
     parser.add_argument('--cv_spatial_reduction', type=int, default=4,
-                        help='CV-GSC 空间降采样倍率，建议 4/8')
+                        help='CV-GSC spatial downsampling factor; 4 or 8 recommended')
     return parser
 
 
@@ -1255,22 +1255,22 @@ def build_model(args):
     backbone_builder = None
     if (tv_backbones is not None) and hasattr(tv_backbones, args.model):
         backbone_builder = getattr(tv_backbones, args.model)
-        print(f"✅ 从 [tv_backbones] 找到模型构建器: {args.model}")
+        print(f"[build_model] model builder found in [tv_backbones]: {args.model}")
 
     elif (timm_backbones is not None) and hasattr(timm_backbones, args.model):
         backbone_builder = getattr(timm_backbones, args.model)
-        print(f"✅ 从 [timm_backbones] 找到模型构建器: {args.model}")
+        print(f"[build_model] model builder found in [timm_backbones]: {args.model}")
 
     elif hasattr(convnextv2, args.model):
         backbone_builder = getattr(convnextv2, args.model)
-        print(f"✅ 从 [ConvNeXtV2] 模块中成功找到模型构建器: {args.model}")
+        print(f"[build_model] model builder found in [ConvNeXtV2]: {args.model}")
 
     elif hasattr(convnextv1, args.model):
         backbone_builder = getattr(convnextv1, args.model)
-        print(f"✅ 从 [ConvNeXtV1] 模块中成功找到模型构建器: {args.model}")
+        print(f"[build_model] model builder found in [ConvNeXtV1]: {args.model}")
 
     else:
-        raise ValueError(f"未找到模型构建器: {args.model}")
+        raise ValueError(f"model builder not found: {args.model}")
 
     try:
         backbone = backbone_builder(num_classes=0)
@@ -1287,15 +1287,15 @@ def build_model(args):
     parsed_attention_config = None
     if getattr(args, "attention_name", None):
         parsed_attention_config = resolve_attention_config(args.attention_name)
-        print(f"✅ 使用 attention_name={args.attention_name}")
-        print("✅ 映射后的注意力配置:", parsed_attention_config)
+        print(f"[attention] using attention_name={args.attention_name}")
+        print("[attention] mapped configuration:", parsed_attention_config)
     elif getattr(args, "attention_config", None):
         try:
             parsed_attention_config = json.loads(args.attention_config)
-            print("⚠️ 使用 legacy --attention_config")
-            print("✅ 成功解析注意力配置:", parsed_attention_config)
+            print("[attention] WARNING: using the legacy --attention_config")
+            print("[attention] parsed configuration:", parsed_attention_config)
         except json.JSONDecodeError:
-            raise ValueError(f"错误: 解析 --attention_config 的 JSON 字符串失败: {args.attention_config}")
+            raise ValueError(f"error: failed to parse the JSON string of --attention_config: {args.attention_config}")
 
     candidate_kwargs = {
         "backbone": backbone,
@@ -1652,35 +1652,35 @@ def _safe_evaluate(data_loader_val, model_to_eval, device, amp=True, class_names
 
 
 def _load_resume_checkpoint(model, optimizer, model_ema, scheduler, checkpoint_path, args):
-    """加载续训检查点"""
+    """Load a resume checkpoint"""
     if not checkpoint_path or not os.path.isfile(checkpoint_path):
         return 0, -1.0, 0
 
-    print(f"📂 加载续训检查点: {checkpoint_path}")
+    print(f"[resume] loading checkpoint: {checkpoint_path}")
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
 
     model.load_state_dict(checkpoint['model'])
 
     if args.resume_optimizer and 'optimizer' in checkpoint:
         optimizer.load_state_dict(checkpoint['optimizer'])
-        print("✅ 优化器状态已恢复")
+        print("[resume] optimizer state restored")
 
     if args.resume_scheduler and scheduler is not None and 'scheduler' in checkpoint:
         scheduler.load_state_dict(checkpoint['scheduler'])
-        print("✅ 学习率调度器状态已恢复")
+        print("[resume] LR scheduler state restored")
 
     if model_ema is not None and 'model_ema' in checkpoint:
         model_ema.ema_state = checkpoint['model_ema']
-        print("✅ EMA模型状态已恢复")
+        print("[resume] EMA model state restored")
 
     start_epoch = checkpoint.get('epoch', 0) + 1
     best_metric = checkpoint.get('metric', {}).get('mAP', -1.0)
     epochs_since_best = checkpoint.get('epochs_since_best', 0)
 
-    print(f"✅ 从 {checkpoint_path} 成功续训。")
-    print(f"   - 起始轮次: {start_epoch}")
-    print(f"   - 已达最佳 mAP: {best_metric:.4f}")
-    print(f"   - 早停计数器状态: {epochs_since_best}")
+    print(f"[resume] resumed successfully from {checkpoint_path}")
+    print(f"   - start epoch      : {start_epoch}")
+    print(f"   - best mAP so far  : {best_metric:.4f}")
+    print(f"   - early-stop count : {epochs_since_best}")
 
     return start_epoch, best_metric, epochs_since_best
 
@@ -1692,31 +1692,31 @@ def main(args):
 
     try:
         mp.set_sharing_strategy('file_system')
-        print("✅ 共享内存策略设置为 'file_system'")
+        print("[main] shared-memory strategy set to 'file_system'")
     except Exception as e:
-        print(f"⚠️ 设置共享内存策略时出错: {e}")
+        print(f"[main] WARNING: failed to set the shared-memory strategy: {e}")
 
     torch.backends.cudnn.benchmark = not getattr(args, "deterministic", False)
 
     if torch.cuda.is_available():
         torch.cuda.set_per_process_memory_fraction(0.9)
-        print("✅ CUDA 内存优化已启用")
+        print("[main] CUDA memory optimisation enabled")
 
     if getattr(args, "sem_conflict_lambda", 0.0) > 0 and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ sem_conflict_loss 已启用，自动设置 return_intermediate=True 以读取 logits_base/logits_sem")
+        print("[main] sem_conflict_loss enabled; return_intermediate=True set automatically to read logits_base/logits_sem")
     if getattr(args, "sem_trust_lambda", 0.0) > 0 and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ semantic trust supervision 已启用，自动设置 return_intermediate=True")
+        print("[main] semantic trust supervision enabled; return_intermediate=True set automatically")
     if getattr(args, "sem_rank_lambda", 0.0) > 0 and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ semantic rank calibration 已启用，自动设置 return_intermediate=True")
+        print("[main] semantic rank calibration enabled; return_intermediate=True set automatically")
     if getattr(args, "sem_error_lambda", 0.0) > 0 and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ visual-error semantic supervision 已启用，自动设置 return_intermediate=True")
+        print("[main] visual-error semantic supervision enabled; return_intermediate=True set automatically")
     if getattr(args, "spatial_query_lambda", 0.0) > 0 and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ spatial-query supervision 已启用，自动设置 return_intermediate=True")
+        print("[main] spatial-query supervision enabled; return_intermediate=True set automatically")
     view_evidence_enabled = (
         getattr(args, "view_evidence_aux_weight", 0.0) > 0
         or getattr(args, "view_evidence_distill_weight", 0.0) > 0
@@ -1727,7 +1727,7 @@ def main(args):
         )
     if view_evidence_enabled and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ cross-view best-evidence distillation 已启用，自动设置 return_intermediate=True")
+        print("[main] cross-view best-evidence distillation enabled; return_intermediate=True set automatically")
     selective_rescue_enabled = any(float(getattr(args, name, 0.0)) > 0 for name in (
         "selective_rescue_aux_weight", "selective_rescue_loss_weight",
         "selective_rescue_guard_weight"))
@@ -1807,7 +1807,7 @@ def main(args):
         or getattr(args, "use_iscvf", False)
     ) and not getattr(args, "return_intermediate", False):
         args.return_intermediate = True
-        print("✅ DV-CRE/IS-CVF 已启用，自动设置 return_intermediate=True")
+        print("[main] DV-CRE/IS-CVF enabled; return_intermediate=True set automatically")
     visual_route_loss_enabled = any(
         float(getattr(args, name, 0.0)) > 0
         for name in (
@@ -1834,7 +1834,7 @@ def main(args):
         args, "return_intermediate", False
     ):
         args.return_intermediate = True
-        print("✅ visual evidence routing 已启用，自动设置 return_intermediate=True")
+        print("[main] visual evidence routing enabled; return_intermediate=True set automatically")
 
     innovation_flag_names = (
         "use_p9_caprs",
@@ -2097,8 +2097,8 @@ def main(args):
 
     base_criterion = build_base_criterion(args)
     print(f"[BaseLoss] Using {args.base_loss}  ->  {base_criterion.__class__.__name__}")
-        # GSPF wrapper 必须始终启用：
-    # 即使 lambda=0，也需要在每个 batch 后清空 GSPF cache，避免显存持续上涨。
+        # the GSPF wrapper must always stay enabled:
+    # even with lambda=0 the GSPF cache has to be cleared after every batch, otherwise GPU memory keeps growing.
     base_criterion = GSPFRegularizedCriterion(
         base_criterion=base_criterion,
         lambda_consistency=args.gspf_lambda_consistency,
@@ -2396,11 +2396,11 @@ def main(args):
         min_lr_ratio=args.min_lr / args.lr
     )
 
-    print(f"✅ 学习率调度器已创建:")
-    print(f"   - Warmup 轮次: {args.warmup_epochs}")
-    print(f"   - 总训练轮次: {args.epochs}")
-    print(f"   - 初始学习率: {args.lr}")
-    print(f"   - 最小学习率: {args.min_lr}")
+    print("[main] learning-rate scheduler created:")
+    print(f"   - warmup epochs   : {args.warmup_epochs}")
+    print(f"   - total epochs    : {args.epochs}")
+    print(f"   - initial LR      : {args.lr}")
+    print(f"   - minimum LR      : {args.min_lr}")
 
     model_ema = None
     if args.teacher_mode:
@@ -2418,12 +2418,12 @@ def main(args):
             best_ckpt = Path(checkpoint_path) / "checkpoint_best.pth"
             if last_ckpt.exists():
                 checkpoint_path = str(last_ckpt)
-                print(f"检测到目录，使用最新的检查点: {checkpoint_path}")
+                print(f"[resume] directory detected, using the latest checkpoint: {checkpoint_path}")
             elif best_ckpt.exists():
                 checkpoint_path = str(best_ckpt)
-                print(f"检测到目录，使用最佳的检查点: {checkpoint_path}")
+                print(f"[resume] directory detected, using the best checkpoint: {checkpoint_path}")
             else:
-                print(f"⚠️ 续训目录 {args.resume} 为空，将从头开始训练。")
+                print(f"[resume] WARNING: directory {args.resume} is empty, training from scratch.")
                 checkpoint_path = None
 
         if checkpoint_path and os.path.isfile(checkpoint_path):
@@ -2432,7 +2432,7 @@ def main(args):
             )
 
         if args.resume_epoch >= 0:
-            print(f"手动覆盖起始轮次为: {args.resume_epoch}")
+            print(f"[resume] start epoch overridden manually: {args.resume_epoch}")
             start_epoch = args.resume_epoch
 
     best_val_stats = {}
@@ -2450,27 +2450,27 @@ def main(args):
                 'epoch_time', 'avg_epoch_time', 'estimated_remaining_hours',
                 'completion_time', 'grad_var'
             ])
-        print("📝 创建新的训练日志文件")
+        print("[log] creating a new training log file")
     else:
-        print(f"📝 续训模式，将追加到现有日志文件: {csv_path}")
+        print(f"[log] resume mode, appending to the existing log file: {csv_path}")
 
     import datetime
     start_time = time.time()
     epoch_times = []
 
-    print(f"\n🎯 开始训练，总轮次: {args.epochs}, 起始轮次: {start_epoch}")
+    print(f"\n[main] starting training: total epochs={args.epochs}, start epoch={start_epoch}")
     if args.patience > 0:
-        print(f"⌛ 早停机制已启用，耐心值 (Patience) = {args.patience} 轮")
+        print(f"[main] early stopping enabled, patience = {args.patience} epochs")
         if args.early_stop_start_epoch > 0:
             print(
-                "⌛ 早停计数将从 Epoch "
-                f"{args.early_stop_start_epoch} 开始"
+                "[main] early-stop counting starts at epoch "
+                f"{args.early_stop_start_epoch}"
             )
-    print(f"📊 训练集 batches/epoch: {len(data_loader_train)}")
+    print(f"[main] training batches/epoch: {len(data_loader_train)}")
 
     if start_epoch == 0 and getattr(args, "reseed_before_training", False):
         set_seed(args.seed, deterministic=getattr(args, "deterministic", False))
-        print(f"🔒 模型构建后重新固定 RNG: seed={args.seed}")
+        print(f"[main] RNG re-seeded after model construction: seed={args.seed}")
 
     start = time.time()
     for epoch in range(start_epoch, args.epochs):
@@ -2492,15 +2492,15 @@ def main(args):
         scheduler.step()
 
         if epoch % 5 == 0 or epoch < args.warmup_epochs:
-            print(f"📈 Epoch {epoch} 学习率: {current_lr:.2e}")
+            print(f"[epoch {epoch}] learning rate: {current_lr:.2e}")
 
         if model_ema is not None:
             eval_model = build_model(args).to(device)
             model_ema.copy_to(eval_model)
-            print("📊 使用EMA模型进行评估")
+            print("[eval] using the EMA model")
         else:
             eval_model = model
-            print("📊 使用原始模型进行评估")
+            print("[eval] using the raw model")
 
         val_stats = _safe_evaluate(
             data_loader_val=data_loader_val,
@@ -2520,8 +2520,8 @@ def main(args):
         estimated_remaining = avg_epoch_time * remaining_epochs
         completion_time = datetime.datetime.now() + datetime.timedelta(seconds=estimated_remaining)
 
-        print(f"⏰ Epoch {epoch} 耗时: {epoch_time:.1f}s, 平均: {avg_epoch_time:.1f}s, 剩余预估: {estimated_remaining/3600:.1f}h")
-        print(f"  预计完成: {completion_time.strftime('%m-%d %H:%M')}")
+        print(f"[epoch {epoch}] time: {epoch_time:.1f}s, avg: {avg_epoch_time:.1f}s, estimated remaining: {estimated_remaining/3600:.1f}h")
+        print(f"  estimated completion: {completion_time.strftime('%m-%d %H:%M')}")
 
         primary = None
         if isinstance(val_stats, dict):
@@ -2540,15 +2540,15 @@ def main(args):
             best_metric = primary
             best_val_stats = val_stats
             epochs_since_best = 0
-            print(f"🎉 新的最佳性能! mAP = {best_metric:.4f}. 重置早停计数器。")
+            print(f"[best] new best mAP = {best_metric:.4f}; early-stop counter reset.")
         else:
             if epoch >= max(int(args.early_stop_start_epoch), 0):
                 epochs_since_best += 1
-                print(f"📉 性能未提升，早停计数器: {epochs_since_best}/{args.patience}")
+                print(f"[early-stop] no improvement, counter: {epochs_since_best}/{args.patience}")
             else:
                 epochs_since_best = 0
                 print(
-                    "⏸️ 分支预训练阶段，早停尚未开始计数 "
+                    "[early-stop] warm-up phase, counting has not started yet "
                     f"({epoch}/{args.early_stop_start_epoch})"
                 )
 
@@ -2592,21 +2592,21 @@ def main(args):
             and epoch >= max(int(args.early_stop_start_epoch), 0)
             and epochs_since_best >= args.patience
         ):
-            print(f"\n🛑 触发早停! 验证集指标已连续 {args.patience} 轮未提升。")
-            print(f"   - 最佳性能出现在第 {epoch - epochs_since_best} 轮，{metric_name} = {best_metric:.4f}")
+            print(f"\n[early-stop] triggered: validation metric has not improved for {args.patience} consecutive epochs.")
+            print(f"   - best result at epoch {epoch - epochs_since_best}, {metric_name} = {best_metric:.4f}")
             break
 
     total_time = time.time() - start_time
-    print(f"\n✅ 训练完成! 总耗时: {total_time/3600:.2f} 小时")
+    print(f"\n[main] training finished. total time: {total_time/3600:.2f} h")
 
-    print("📊 按mAP排序训练日志...")
+    print("[log] sorting the training log by mAP...")
     try:
         df = pd.read_csv(csv_path)
         df_sorted = df.sort_values('val_metric', ascending=False)
         df_sorted.to_csv(csv_path, index=False)
-        print(f"✅ 训练日志已按mAP排序并保存至: {csv_path}")
+        print(f"[log] training log sorted by mAP and saved to: {csv_path}")
     except Exception as e:
-        print(f"⚠️ 排序CSV文件时出错: {e}")
+        print(f"[log] WARNING: failed to sort the CSV file: {e}")
 
     try:
         total_params = sum(p.numel() for p in model.parameters())

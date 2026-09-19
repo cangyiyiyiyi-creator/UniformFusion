@@ -52,31 +52,31 @@ def main():
             if not Path(row["archived_path_a"]).is_file() or not Path(row["archived_path_b"]).is_file():
                 raise FileNotFoundError(f"Missing archived raw pair for {row['case_id']}")
 
-    readme = f"""# 真实可视化与 PR 曲线论文材料
+    readme = f"""# Real visualisation and PR-curve paper materials
 
-本目录由锁定 Test 划分和锁定 `checkpoint_best.pth` 纯推理生成，没有重新训练或修改模型。
+This directory was produced by pure inference on the locked test split with the locked `checkpoint_best.pth`; no retraining and no model modification took place.
 
-## 内容
+## Contents
 
-- `01_样本级预测/`：DvXray 5 seeds 与 LDXray 3 seeds 的 Plain/Uniform 完整 Test targets、logits、probabilities 和专家证据。
-- `02_PR曲线/`：弱类/稀有类的多种子均值 PR 曲线、标准差带、SVG/PDF/PNG 和完整绘图 CSV。
-- `03_成功失败案例/`：按预先固定规则选出的真实成对原图、选样分数和来源路径。
-- `04_区域热图/`：真实 C4/C5 class-query Top-K 选择权重、四专家证据、原始 NPZ 与可排版图。
-- `05_生成代码/`：本材料包使用的全部独立推理与绘图代码。
+- `01_sample_predictions/`: complete test targets, logits, probabilities and expert evidence for Plain/Uniform on the 5 DvXray seeds and the 3 LDXray seeds.
+- `02_pr_curves/`: multi-seed mean PR curves for weak/rare classes, standard-deviation bands, SVG/PDF/PNG and the full plotting CSVs.
+- `03_success_failure_cases/`: real paired source images selected by pre-declared fixed rules, together with selection scores and provenance paths.
+- `04_region_heatmaps/`: real C4/C5 class-query Top-K selection weights, four-expert evidence, raw NPZ files and typeset-ready figures.
+- `05_generation_code/`: all standalone inference and plotting code used for this material bundle.
 
-## 完整性
+## Integrity
 
-- 锁定预测导出：16/16。
-- DvXray 客观选样/热图：{case_counts['DvXray']}/{heatmap_counts['DvXray']}。
-- LDXray 客观选样/热图：{case_counts['LDXray']}/{heatmap_counts['LDXray']}。
-- 导出 mAP 与原锁定 Test 指标的最大绝对误差：`{max_map_error:.3e}`。
+- locked prediction exports: 16/16.
+- DvXray objective case selection / heat maps: {case_counts['DvXray']}/{heatmap_counts['DvXray']}.
+- LDXray objective case selection / heat maps: {case_counts['LDXray']}/{heatmap_counts['LDXray']}.
+- maximum absolute error between the exported mAP and the original locked test metric: `{max_map_error:.3e}`.
 
-## 论文表述边界
+## Scope of the claims
 
-1. 热图是 class-query Top-K 选择证据，不是 Grad-CAM，不是物体标注框。
-2. `success` 与 `failure` 是按选样清单中的固定概率规则命名，不能脱离 target 和分数解读。
-3. PR 曲线的阴影是固定种子间标准差，不是置信区间。
-4. 原始图像仅从本机官方/锁定数据路径复制，未经 AI 生成或编辑。
+1. The heat maps show class-query Top-K selection evidence; they are neither Grad-CAM nor object bounding boxes.
+2. `success` and `failure` follow a fixed probability rule in the selection manifest and must not be read independently of the targets and scores.
+3. The shaded area of the PR curves is the standard deviation across fixed seeds, not a confidence interval.
+4. The source images were copied from the official/locked local data paths and were neither AI-generated nor edited.
 """
     (root / "README.md").write_text(readme, encoding="utf-8")
 

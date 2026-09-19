@@ -1,4 +1,4 @@
-# ---- 运行产物（不入库）----
+# ---- run artefacts (not committed) ----
 /core/annotations/
 /annotations/
 /runs_*/
@@ -7,7 +7,7 @@ experiments/**/runs_*/
 *.log
 master.log
 
-# ---- 训练产物 / 权重 ----
+# ---- training artefacts / weights ----
 *.pth
 *.pt
 *.ckpt
@@ -15,7 +15,7 @@ master.log
 *.onnx
 *.engine
 
-# ---- relink 备份 ----
+# ---- relink backups ----
 *.orig
 
 # ---- Python ----
@@ -27,7 +27,7 @@ venv/
 env/
 .ipynb_checkpoints/
 
-# ---- 编辑器 / 系统 ----
+# ---- editors / OS ----
 .vscode/
 .idea/
 .DS_Store

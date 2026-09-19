@@ -105,9 +105,9 @@ def main():
             })
 
     output.mkdir(parents=True, exist_ok=True)
-    write_csv(output / "UF内部base_vs_final_逐seed.csv", run_rows)
-    write_csv(output / "UF内部base_vs_final_逐类.csv", class_rows)
-    write_csv(output / "GroupedTieAP_顺序不敏感审计.csv", tie_rows)
+    write_csv(output / "UF_internal_base_vs_final_per_seed.csv", run_rows)
+    write_csv(output / "UF_internal_base_vs_final_per_class.csv", class_rows)
+    write_csv(output / "GroupedTieAP_order_insensitive_audit.csv", tie_rows)
     summary = []
     for dataset in ("DvXray", "LDXray"):
         rows = [r for r in run_rows if r["dataset"] == dataset]
@@ -115,7 +115,7 @@ def main():
             f"{key}_mean": float(np.mean([r[key] for r in rows]))
             for key in ("base_mAP", "final_mAP", "delta_mAP", "correction_mean", "correction_std", "positive_ratio", "negative_ratio", "threshold_flips", "rank_positions_changed")
         }})
-    write_csv(output / "UF内部base_vs_final_汇总.csv", summary)
+    write_csv(output / "UF_internal_base_vs_final_summary.csv", summary)
     max_shuffle = max(float(r["max_shuffle_abs_difference"]) for r in tie_rows)
     report = {
         "status": "PASS" if max_shuffle <= 1e-12 else "FAIL",
@@ -124,7 +124,7 @@ def main():
         "max_grouped_ap_shuffle_difference": max_shuffle,
         "summary": summary,
     }
-    (output / "审计摘要.json").write_text(json.dumps(report, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
+    (output / "audit_summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
     print(f"UF_INTERNAL_AUDIT_{report['status']} runs={len(run_rows)} class_rows={len(class_rows)} max_shuffle_diff={max_shuffle:.3g}")
 
 

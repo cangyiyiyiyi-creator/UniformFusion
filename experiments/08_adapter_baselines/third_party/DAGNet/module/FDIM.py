@@ -196,5 +196,5 @@ if __name__ == '__main__':
 
     x_output, y_output = model(x_input, y_input)
 
-    print(f"输入尺寸: x={x_input.size()}, y={y_input.size()}")
-    print(f"输出尺寸: x_out={x_output.size()}, y_out={y_output.size()}")
+    print(f"input size: x={x_input.size()}, y={y_input.size()}")
+    print(f"output size: x_out={x_output.size()}, y_out={y_output.size()}")

@@ -5,7 +5,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# --- 从新的模块文件中导入所有“零件” ---
+# --- import all "parts" from the new module files ---
 from .modules.common import Conv1x1
 from .modules.fusions import (
     GatedFuse,
@@ -82,14 +82,14 @@ class SemanticTrustRouter(nn.Module):
 
 class SemanticClassEmbeddingHead(nn.Module):
     """
-    轻量视觉-语义辅助分支：
-    - 保留原始 Linear 分类头不动；
-    - 默认每个类别维护一个可学习 semantic token；
-    - 可选加载 LLM 类别描述的文本 embedding 作为 semantic prompt 初始化；
-    - 将视觉全局特征投影到语义空间，与类别 token 做 cosine similarity；
-    - 最终 logits = logits_base + semantic_correction；
-    - 可选 gate 时 semantic_correction = gate(x) * gamma * logits_sem。
-    - 可选双视角校准时，用 A/B 视角语义一致性调节 semantic_correction。
+    Lightweight vision-semantic auxiliary branch:
+    - keeps the original Linear classification head untouched;
+    - maintains one learnable semantic token per class by default;
+    - can initialise the semantic prompts from text embeddings of LLM class descriptions;
+    - projects the global visual feature into the semantic space and takes the cosine similarity with the class tokens;
+    - final logits = logits_base + semantic_correction;
+    - with the optional gate, semantic_correction = gate(x) * gamma * logits_sem.
+    - with the optional dual-view calibration, the A/B semantic consistency modulates semantic_correction.
     """
     def __init__(
         self,
@@ -184,10 +184,10 @@ class SemanticClassEmbeddingHead(nn.Module):
             text_emb = text_obj["embeddings"] if isinstance(text_obj, dict) else text_obj
             text_emb = text_emb.float()
             if text_emb.dim() != 2:
-                raise ValueError(f"sem_text_embed_path 中 embeddings 必须是 [C,D]，实际 {tuple(text_emb.shape)}")
+                raise ValueError(f"embeddings in sem_text_embed_path must be [C,D], got {tuple(text_emb.shape)}")
             if text_emb.size(0) != self.num_classes:
                 raise ValueError(
-                    f"sem_text_embed_path 类别数不匹配：期望 {self.num_classes}，实际 {text_emb.size(0)}"
+                    f"sem_text_embed_path class count mismatch: expected {self.num_classes}, got {text_emb.size(0)}"
                 )
 
             text_dim = int(text_emb.size(1))
@@ -204,7 +204,7 @@ class SemanticClassEmbeddingHead(nn.Module):
             self.class_tokens = nn.Parameter(torch.empty(self.num_classes, self.sem_dim))
             nn.init.trunc_normal_(self.class_tokens, std=0.02)
 
-        # 小权重融合，避免一开始破坏 R2 主分类头；gamma_max>0 时约束到 (0, gamma_max)。
+        # small-weight fusion so the R2 head is not disturbed early on; clipped to (0, gamma_max) when gamma_max>0.
         if self.gamma_max > 0:
             ratio = min(max(float(gamma_init) / self.gamma_max, 1e-4), 1.0 - 1e-4)
             gamma_raw = math.log(ratio / (1.0 - ratio))
@@ -877,11 +877,11 @@ class ConvNeXtV2Dual(nn.Module):
         xattn_heads: int = 4,
         xattn_reduction: int = 4,
         fpn_out_channels: int = 256,
-        # 新增的参数，由 main_finetune.py 传递
+        # new parameters, passed in by main_finetune.py
         attention_config: Optional[Dict] = None,
         use_cv_gsc: bool = False,
         cv_spatial_reduction: int = 2,
-        # 视觉-语义多模态辅助分支，不启用时完全等价原模型
+        # vision-semantic auxiliary branch; identical to the original model when disabled
         use_semantic_branch: bool = False,
         sem_aux_only: bool = False,
         sem_dim: int = 256,
@@ -1068,7 +1068,7 @@ class ConvNeXtV2Dual(nn.Module):
         self.out_indices = tuple(out_indices)
         self.fuse_mode = str(fuse_mode)
         self.fuse_levels = tuple(fuse_levels)
-        self.head_type = str(head_type) # head_type 现在是 'fpn_pan' 等基础类型
+        self.head_type = str(head_type) # head_type is now a base type such as 'fpn_pan'
         self.attention_config = attention_config
         self.use_cv_gsc = bool(use_cv_gsc)
         self.cv_spatial_reduction = int(cv_spatial_reduction)
@@ -1188,13 +1188,13 @@ class ConvNeXtV2Dual(nn.Module):
         elif hasattr(backbone, "feature_info"):
             chs = list(map(int, backbone.feature_info.channels()))
             if len(chs) >= 5:
-                dims = [chs[1], chs[2], chs[3], chs[4]]  # 对齐 C2..C5
+                dims = [chs[1], chs[2], chs[3], chs[4]]  # aligned with C2..C5
             elif len(chs) == 4:
                 dims = chs
             else:
-                raise AttributeError(f"无法从 feature_info 推断 4 层通道数，拿到 {chs}")
+                raise AttributeError(f"cannot infer the 4 level channel counts from feature_info, got {chs}")
         else:
-            raise AttributeError("backbone 缺少 'dims' 或 'feature_info'，无法建立金字塔通道规格。")
+            raise AttributeError("backbone has neither 'dims' nor 'feature_info'; cannot build the pyramid channel spec.")
 
         self.stage_to_name = {1: "C3", 2: "C4", 3: "C5"}
         self.name_to_dim = {self.stage_to_name[i]: dims[i] for i in self.out_indices}
@@ -1231,7 +1231,7 @@ class ConvNeXtV2Dual(nn.Module):
                     reduction=iscvf_gate_reduction,
                 )
 
-        # CV-GSC 在双视角融合之前对齐同层特征，通道数使用 backbone 对应 C3/C4/C5 通道
+        # CV-GSC aligns same-level features before dual-view fusion, using the backbone channels of C3/C4/C5
         self.cv_gsc = nn.ModuleDict()
         if self.use_cv_gsc:
             for name in self.fuse_levels:
@@ -1280,7 +1280,7 @@ class ConvNeXtV2Dual(nn.Module):
         elif ht in ("fpn_fuse", "fpn_pan"):
             feat_ch = fpn_out_channels
         else:
-            raise ValueError(f"head_type 必须是 'c5', 'fpn', 'fpn_fuse', 或 'fpn_pan', 收到: {ht}")
+            raise ValueError(f"head_type must be 'c5', 'fpn', 'fpn_fuse' or 'fpn_pan', got: {ht}")
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(feat_ch, self.num_classes) if self.num_classes > 0 else nn.Identity()
@@ -1799,22 +1799,22 @@ class ConvNeXtV2Dual(nn.Module):
                     module.eval()
         return self
 
-    # 提取单视角多层特征
+    # extract the multi-level features of a single view
     def _extract_single_view(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         feats: Dict[str, torch.Tensor] = {}
 
-        # 先判断是否是原生 ConvNeXtV2（显式 downsample_layers + stages）
+        # first check whether this is a native ConvNeXtV2 (explicit downsample_layers + stages)
         if hasattr(self.backbone, 'downsample_layers') and hasattr(self.backbone, 'stages'):
             x = self.backbone.downsample_layers[0](x)
             x = self.backbone.stages[0](x)
-            # 这里 self.out_indices 通常是 (1,2,3) -> C3, C4, C5
+            # self.out_indices is normally (1,2,3) -> C3, C4, C5
             for i in range(1, 4):
                 x = self.backbone.downsample_layers[i](x)
                 x = self.backbone.stages[i](x)
                 if i in self.out_indices:
                     feats[self.stage_to_name[i]] = x
         else:
-            # 通用 FeatureList 主干（timm features_only=True）
+            # generic FeatureList backbone (timm features_only=True)
             feature_list = None
             if hasattr(self.backbone, 'forward_features'):
                 y = self.backbone.forward_features(x)
@@ -1825,19 +1825,19 @@ class ConvNeXtV2Dual(nn.Module):
                 if isinstance(y, (list, tuple)) and len(y) >= 4:
                     feature_list = y
             if feature_list is None:
-                raise RuntimeError("未能从主干获得特征列表，请确认其为 ConvNeXtV2 或 TIMM features_only 风格。")
+                raise RuntimeError("backbone did not return a feature list; expected ConvNeXtV2 or a TIMM features_only style.")
 
-            # feature_list 的 0/1/2/3 对应 C2/C3/C4/C5；只取 1/2/3 -> C3/C4/C5
+            # feature_list indices 0/1/2/3 map to C2/C3/C4/C5; only 1/2/3 -> C3/C4/C5 are used
             for i in self.out_indices:  # (1,2,3)
                 feats[self.stage_to_name[i]] = feature_list[i]
 
         if not feats:
-            raise RuntimeError("错误: _extract_single_view 未能从 backbone 提取任何特征。")
+            raise RuntimeError("error: _extract_single_view could not extract any feature from the backbone.")
         return feats
     
-    # 融合两路特征
+    # fuse the two feature streams
     def _fuse_pair(self, xa: torch.Tensor, xb: torch.Tensor, name: str) -> torch.Tensor:
-        # 注意：这个方法现在不再处理 ahcr 模式
+        # note: this method no longer handles the ahcr mode
         if name not in self.fuse_levels: return xa
         if self.fuse_mode in ("add", "cv_gsc_add"): return xa + xb
         elif self.fuse_mode == "mean": return (xa + xb) * 0.5
@@ -1847,8 +1847,8 @@ class ConvNeXtV2Dual(nn.Module):
         elif self.fuse_mode == "xattn":
             if name in self.xattn_fuses: return self.xattn_fuses[name](xa, xb)
             else: return xa
-        # 注意：这里不再有 ahcr 的 elif 分支
-        else: raise ValueError(f"未知或不应在此处理的 fuse_mode: {self.fuse_mode}")
+        # note: the ahcr elif branch has been removed
+        else: raise ValueError(f"unknown fuse_mode or one that must not be handled here: {self.fuse_mode}")
 
     def _name_to_stage(self, name: str) -> int:
         for k, v in self.stage_to_name.items():
@@ -1858,7 +1858,7 @@ class ConvNeXtV2Dual(nn.Module):
 
     def _view_semantic_vector(self, feats: Dict[str, torch.Tensor]) -> torch.Tensor:
         if "C5" not in feats:
-            raise RuntimeError("sem_view_calib 需要单视角 C5 特征。")
+            raise RuntimeError("sem_view_calib requires single-view C5 features.")
         vec = self.global_pool(feats["C5"]).flatten(1)
         if self.view_semantic_adapter is not None:
             vec = self.view_semantic_adapter(vec)
@@ -1925,7 +1925,7 @@ class ConvNeXtV2Dual(nn.Module):
         if self.fpn_pan is not None:
             n3, _, _ = self.fpn_pan(fused["C3"], fused["C4"], fused["C5"])
             return self.global_pool(n3).flatten(1)
-        raise ValueError(f"未知 head_type: {self.head_type}")
+        raise ValueError(f"unknown head_type: {self.head_type}")
 
     def _intervene_views(self, feats_a, feats_b):
         reference = next(iter(feats_a.values()))

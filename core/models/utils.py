@@ -3,24 +3,24 @@ import numpy.random as random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# [ADDED] 可选导入 MinkowskiEngine；2D 训练不需要它
+# [ADDED] optional MinkowskiEngine import; 2D training does not need it
 try:
     from MinkowskiEngine import SparseTensor  # type: ignore
     ME_AVAILABLE = True
 except Exception:
-    class SparseTensor:  # 简单占位，确保类型检查不报错；真正用到时再报友好错误
+    class SparseTensor:  # simple placeholder so type checks pass; a friendly error is raised when it is really used
         pass
     ME_AVAILABLE = False
 
 
 # ======================
-# [ADDED] 小工具：在未安装 ME 时抛出更友好的错误
+# [ADDED] small helper that raises a friendlier error when MinkowskiEngine is missing
 # ======================
 def _require_me():
     if not ME_AVAILABLE:
         raise ImportError(
-            "MinkowskiEngine 未安装。该模块仅用于稀疏/3D 场景；"
-            "请避免在 2D 任务中实例化 Minkowski* 层，或按官方文档安装 ME。"
+            "MinkowskiEngine is not installed. It is only needed for sparse/3D settings;"
+            "avoid instantiating Minkowski* layers in 2D tasks, or install MinkowskiEngine following the official documentation."
         )
 
 class MinkowskiGRN(nn.Module):
@@ -58,10 +58,10 @@ class MinkowskiDropPath(nn.Module):
         in_key = x.coordinate_map_key
         keep_prob = 1 - self.drop_prob
 
-        # [CHANGED] 用 torch.rand 直接在设备上采样掩码（替代 numpy.random）
+        # [CHANGED] sample the mask directly on the device with torch.rand (instead of numpy.random)
         mask_list = []
         for coords in x.decomposed_coordinates:
-            # 每个子块一次伯努利采样（保留或丢弃）
+            # one Bernoulli sample per sub-block (keep or drop)
             keep = (torch.rand((), device=x.device) > self.drop_prob)
             m = torch.ones(len(coords), 1, device=x.device) if keep else torch.zeros(len(coords), 1, device=x.device)
             mask_list.append(m)

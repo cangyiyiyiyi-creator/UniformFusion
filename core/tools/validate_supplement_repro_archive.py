@@ -119,27 +119,27 @@ def write_report(
         grouped[record["method"]].append(record["mAP"])
 
     lines = [
-        "# 复现归档独立复验报告",
+        "# Independent re-verification report of the reproduction archive",
         "",
-        f"- 复验时间（UTC）：`{datetime.now(timezone.utc).isoformat()}`",
-        f"- 复验目录：`{root.resolve()}`",
-        "- 总体结论：**PASS**",
-        f"- 样本级预测包：`{len(records)}`",
-        f"- SHA-256 记录：`{hash_records}`",
-        f"- 归档大小：`{archive_size / 1024 / 1024:.2f} MiB`",
+        f"- verification time (UTC): `{datetime.now(timezone.utc).isoformat()}`",
+        f"- verified directory: `{root.resolve()}`",
+        "- overall result: **PASS**",
+        f"- sample-level prediction bundles: `{len(records)}`",
+        f"- SHA-256 records: `{hash_records}`",
+        f"- archive size: `{archive_size / 1024 / 1024:.2f} MiB`",
         "",
-        "## 复验范围",
+        "## Scope of the re-verification",
         "",
-        "1. Adapter、梯度累积、流水线测速和预测导出源码目录完整性。",
-        "2. `predictions.npz` 中 targets/logits/probabilities 的样本数和类别数。",
-        "3. sigmoid(logits) 与 probabilities 的数值一致性。",
-        "4. `sample_manifest.csv` 和 `sample_predictions.csv` 的行数完整性。",
-        "5. 逐类 AP 重算后的 mAP 与锁定 Test mAP 一致性（容差 1e-6）。",
-        "6. `SHA256SUMS.txt` 中所有文件的内容哈希。",
+        "1. Completeness of the source directories for adapters, gradient accumulation, pipeline profiling and prediction export.",
+        "2. Sample and class counts of targets/logits/probabilities in `predictions.npz`.",
+        "3. Numerical agreement between sigmoid(logits) and probabilities.",
+        "4. Row-count completeness of `sample_manifest.csv` and `sample_predictions.csv`.",
+        "5. Agreement between the recomputed mAP (from per-class AP) and the locked test mAP (tolerance 1e-6).",
+        "6. Content hashes of every file listed in `SHA256SUMS.txt`.",
         "",
-        "## 方法覆盖",
+        "## Method coverage",
         "",
-        "| 方法 | seed数 | mAP均值 | mAP标准差 |",
+        "| Method | seeds | mean mAP | std mAP |",
         "|---|---:|---:|---:|",
     ]
     for method in sorted(grouped):
@@ -151,9 +151,9 @@ def write_report(
 
     lines += [
         "",
-        "## 逐预测包校验",
+        "## Per-bundle verification",
         "",
-        "| 方法 | seed | 视角协议 | 样本数 | 重算mAP | 锁定mAP | 绝对误差 |",
+        "| Method | seed | view protocol | samples | recomputed mAP | locked mAP | abs. error |",
         "|---|---:|---|---:|---:|---:|---:|",
     ]
     for record in sorted(records, key=lambda item: (item["method"], item["seed"])):
@@ -164,9 +164,9 @@ def write_report(
         )
     lines += [
         "",
-        "## 结论",
+        "## Conclusion",
         "",
-        "31 个预测包均来自完整锁定划分，未做样本筛选。样本级数组、可读 CSV、锁定 mAP 和文件哈希均通过复验，可用于统计、PR 曲线、成功/失败案例与论文复现审计。",
+        "All 31 prediction bundles come from the complete locked splits with no sample filtering. The sample-level arrays, human-readable CSVs, locked mAP values and file hashes all passed re-verification, so this material can be used for statistics, PR curves, success/failure case studies and paper-reproduction audits.",
         "",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)

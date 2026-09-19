@@ -1,4 +1,4 @@
-# 在原文件中新增一个类；保留你现有类不动
+# add one class to the original file; the existing classes stay untouched
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -45,15 +45,15 @@ class MCBLossConvex(nn.Module):
         w = torch.softmax(cls_std / max(self.tau, 1e-8), dim=0)
         w = torch.clamp(w, min=self.w_min)
         w = w / w.sum()      
-                                     # ✅ 归一化，防尺度漂移
+                                     # normalise to prevent scale drift
         signal_bus.update_mcb_weights(w)
-        # ✅ EMA（detach 保持当步凸性）
+        # EMA (detached so the current step stays convex)
         if self.ema_w.numel() != C:
             self.ema_w = w.detach().clone()
         else:
             self.ema_w.mul_(self.momentum).add_(w.detach(), alpha=1.0 - self.momentum)
 
-        class_weights = self.ema_w.detach()               # ✅ 当步视作常量
+        class_weights = self.ema_w.detach()               # treated as a constant for this step
         bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')
         loss_mat = bce * class_weights.unsqueeze(0)
         return loss_mat.mean() if self.reduction == "mean" else loss_mat.sum()

@@ -1,0 +1,13 @@
+protocol=train on train; select checkpoint on val; report locked checkpoint on test once
+purpose=complete Uniform Fusion from existing fixed n=3 to fixed n=5
+method=Final_NoAnchor_NoRouter
+existing_seeds=930163947 1786430941 553800223
+new_seeds=207027553 1716854429
+repeats=4 5
+batch_size=32
+patience=25
+epochs=180
+existing_ablation_csv=./runs_p9_final_noanchor_ablation/run_20260829_p9_final_noanchor_ablation_3seeds_final/component_ablation_detailed.csv
+main_detailed_csv=./runs_final_noanchor_evidence/run_20260830_final_noanchor_all_evidence_locked/resnet_detailed.csv
+locked_main_finetune_script=/home/hfuu/桌面/beifen /RES-loss-innovate_tu_777777/论文最终归档_20260830/05_运行配置与代码/main_finetune.py
+locked_main_finetune_sha256=d1ec51b1e44152db52def599d2185d02318786de2db1177bff3158b26ce1782d

@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+
+PYTHON="${PYTHON:-/home/hfuu/miniforge3/envs/v2b384_env/bin/python}"
+FIG_ROOT="$ROOT/论文最终归档_20260830/08_真实可视化与PR曲线_20260902"
+PRED_ROOT="$FIG_ROOT/01_样本级预测/DvXray"
+ORIGINAL_CASES="$FIG_ROOT/03_成功失败案例/DvXray/selection_manifest.csv"
+OUT="$FIG_ROOT/07_DvXray追加严格原生网格热图_20260910"
+SELECTION="$OUT/01_选择清单"
+EVIDENCE="$OUT/02_区域证据原始导出"
+EXACT="$OUT/03_严格原生网格热图"
+SOURCE="$OUT/04_生成代码"
+CHECKPOINT="$ROOT/论文最终归档_20260830/02_UniformFusion主方法模型/UniformFusion__ResNet50__seed_930163947/checkpoint_best.pth"
+
+if [[ -e "$OUT" ]]; then
+  printf 'Refusing to overwrite existing output: %s\n' "$OUT" >&2
+  exit 1
+fi
+
+"$PYTHON" tools/build_additional_dvxray_heatmap_selection.py \
+  --plain-prediction-dir "$PRED_ROOT/Plain_BCE/seed_930163947" \
+  --uniform-prediction-dir "$PRED_ROOT/Uniform_Fusion/seed_930163947" \
+  --existing-selection-manifest "$ORIGINAL_CASES" \
+  --output-dir "$SELECTION" \
+  --representative-seed 930163947
+
+"$PYTHON" tools/export_uniform_region_heatmaps.py \
+  --checkpoint "$CHECKPOINT" \
+  --list annotations/DvXray_test.txt \
+  --classes-file annotations/classes.txt \
+  --selection-manifest "$SELECTION/selection_manifest.csv" \
+  --plain-predictions "$PRED_ROOT/Plain_BCE/seed_930163947/predictions.npz" \
+  --uniform-predictions "$PRED_ROOT/Uniform_Fusion/seed_930163947/predictions.npz" \
+  --output-dir "$EVIDENCE" \
+  --dataset-name DvXray
+
+mkdir -p "$EXACT" "$SOURCE"
+while IFS=, read -r case_number case_id rest; do
+  [[ "$case_number" == $'\357\273\277case_number' || "$case_number" == "case_number" ]] && continue
+  "$PYTHON" tools/render_exact_region_evidence.py \
+    --evidence "$EVIDENCE/${case_id}_evidence.npz" \
+    --metadata "$EVIDENCE/${case_id}_metadata.json" \
+    --output "$EXACT/${case_id}_exact.png"
+done < "$EVIDENCE/heatmap_manifest.csv"
+
+cp tools/build_additional_dvxray_heatmap_selection.py "$SOURCE/"
+cp tools/export_uniform_region_heatmaps.py "$SOURCE/"
+cp tools/render_exact_region_evidence.py "$SOURCE/"
+cp run_additional_dvxray_heatmaps.sh "$SOURCE/"
+
+"$PYTHON" -c "from pathlib import Path; import hashlib, json; root=Path(r'$OUT'); files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='artifact_manifest.json'); payload={'cases':8,'files_excluding_manifest':len(files),'sha256':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}; (root/'artifact_manifest.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')"
+
+printf 'ADDITIONAL_DVXRAY_HEATMAPS_COMPLETE output=%s\n' "$OUT"

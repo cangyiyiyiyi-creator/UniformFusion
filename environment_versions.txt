@@ -1,0 +1,18 @@
+# Uniform Fusion 论文运行环境记录
+# 对应 README 第 3 节；完整 pip freeze 见 pip_freeze.txt
+
+conda_environment=v2b384_env
+python=3.10.20
+os=Ubuntu 24.04.4 LTS
+platform=Linux-6.17.0-23-generic-x86_64-with-glibc2.39
+torch=2.9.0+cu128
+torchvision=0.24.0+cu128
+cuda_build=12.8
+cuda_runtime=12.8
+cudnn=9.10.2
+timm=1.0.22
+numpy=2.2.6
+pandas=2.3.3
+scipy=1.15.3
+scikit_learn=1.7.2
+gpu=NVIDIA GeForce RTX 5080 (16303 MiB)

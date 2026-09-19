@@ -1,0 +1,5 @@
+split=validation_only
+seed=930163947
+methods=UF_K4 UF_K16 UF_Temp010 UF_Temp040 UF_GammaMax002 UF_GammaMax010
+default=K8_temperature0.2_gamma_max0.05_reused_from_locked_Uniform
+Test_is_never_evaluated=true

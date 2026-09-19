@@ -1,0 +1,12 @@
+Mobile_Phone
+Orange_Liquid
+Charger_Without_Cell
+Laptop
+Green_Liquid
+Charger_With_Cell
+Tablet
+Blue_Liquid
+Cylindrical_Orange_Liquid
+Nonmetallic_Lighter
+Umbrella
+Cylindrical_Green_Liquid

@@ -1,0 +1,5 @@
+method=UF_GAP
+seeds=930163947 1786430941 553800223
+only_change=class-conditioned Top-K pooling replaced by uniform C4/C5 global average pooling
+selection=finish all Val runs, lock, then Test once
+prerequisite=/home/hfuu/桌面/beifen /RES-loss-innovate_tu_777777/论文补充验证_20260905/06_首批9组训练结果/run_20260905_first_batch/suite_complete.marker

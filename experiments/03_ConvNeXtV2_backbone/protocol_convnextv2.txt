@@ -1,0 +1,16 @@
+protocol=train on train; select all checkpoints on val; evaluate test only after validation phase is locked
+purpose=cross-backbone generalization of the frozen Uniform Fusion main method
+backbone=convnextv2_tiny
+method=Uniform_Fusion
+internal_config=Final_NoAnchor_NoRouter
+baseline=Plain_BCE reused from locked same-protocol n=3 evidence
+baseline_detailed_csv=./runs_final_noanchor_evidence/run_20260830_final_noanchor_all_evidence_locked/convnext_detailed.csv
+seeds=930163947 1786430941 553800223
+repeats=1 2 3
+new_training_groups=3
+batch_size=32
+patience=25
+epochs=180
+locked_main_finetune=/home/hfuu/桌面/beifen /RES-loss-innovate_tu_777777/论文最终归档_20260830/05_运行配置与代码/main_finetune.py
+locked_main_sha256=d1ec51b1e44152db52def599d2185d02318786de2db1177bff3158b26ce1782d
+test_list_sha256=6c50e83f34a499243c3c103137584981f66ac258d9a7abe09c8131ec484276c6

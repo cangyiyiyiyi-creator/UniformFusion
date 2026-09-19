@@ -1,0 +1,17 @@
+method=AHCR-Official
+purpose=reproduce released architecture and training recipe
+source_commit=a6bfc1b1299d28e8226c106a94967287a8e30927
+official_source_modified=false
+architecture=verbatim upstream model_ResNet.py AHCR
+training_dataset=verbatim upstream dataset.py data_loader
+training_loop=verbatim upstream train.py train function
+loss=verbatim upstream BCELoss reduction=sum
+weights=ResNet50_Weights.IMAGENET1K_V1
+optimizer=SGD lr=0.01 momentum=0 weight_decay=0
+schedule=30 epochs; lr multiplied by 0.1 before epochs 11 and 21
+batch_size=32 drop_last=true workers=0 gradient_element_clip=5
+selection=final epoch 30; validation not used for selection
+evaluation_extension=deterministic released preprocessing without training HSV jitter
+evaluation_fusion=verbatim upstream function at batch_size=1
+seeds=930163947 1786430941 553800223 207027553 1716854429
+seed_note=upstream does not publish seeds; fixed n=5 added for repeatability

@@ -1,0 +1,10 @@
+{
+  "DAGNet_official": {
+    "commit": "ab4e3ff202af5328eedb61c8953c4069e0bf8fee",
+    "adapter_expected_commit": "ab4e3ff202af5328eedb61c8953c4069e0bf8fee"
+  },
+  "ML_Decoder_official": {
+    "commit": "8a9e984f671c9c30c98d2c45dfcaf4383381c254",
+    "adapter_expected_commit": "8a9e984f671c9c30c98d2c45dfcaf4383381c254"
+  }
+}

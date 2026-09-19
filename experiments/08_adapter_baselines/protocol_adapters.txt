@@ -1,0 +1,6 @@
+seeds=930163947 1786430941 553800223
+methods=DAGNet_OfficialArchitecture MLDecoder_DualView
+selection=all Val runs finish and lock before any Test evaluation
+shared_protocol=AdamW,BCE,180 epochs,patience 25,conditional augmentation
+DAGNet=official architecture at required 256 input; project data and optimization protocol
+MLDecoder=official head; shared ResNet50 C5 additive dual-view fusion at 224 input

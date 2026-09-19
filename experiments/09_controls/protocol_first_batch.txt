@@ -1,0 +1,6 @@
+protocol=pre-registered reviewer first-batch ablations
+methods=UF_NoSingleLoss Plain_BCE_SingleLoss UF_DenseSelector
+seeds=930163947 1786430941 553800223
+selection=Val checkpoint; Test only after all nine validation runs
+dense_selector=topk exceeds C4/C5 token counts, therefore exact full-spatial softmax
+plain_single=final correction fixed exactly zero; only paired BCE plus single-view auxiliary BCE

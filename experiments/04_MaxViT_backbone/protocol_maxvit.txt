@@ -1,0 +1,7 @@
+protocol=train on train; select checkpoint on val; report test once after all validation runs
+backbone=maxvit_tiny_rw_224.sw_in1k
+methods=Plain_BCE Uniform_Fusion
+seeds=930163947 1786430941 553800223
+batch_size=16
+epochs=180
+patience=25

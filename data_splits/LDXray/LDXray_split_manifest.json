@@ -1,0 +1,22 @@
+{
+  "dataset_root": "/home/hfuu/桌面/LDXRAY-20260901/dataset_clean",
+  "split_seed": 20260901,
+  "val_ratio": 0.1,
+  "train_samples": 99133,
+  "val_samples": 11015,
+  "test_samples": 36849,
+  "classes": [
+    "Mobile_Phone",
+    "Orange_Liquid",
+    "Charger_Without_Cell",
+    "Laptop",
+    "Green_Liquid",
+    "Charger_With_Cell",
+    "Tablet",
+    "Blue_Liquid",
+    "Cylindrical_Orange_Liquid",
+    "Nonmetallic_Lighter",
+    "Umbrella",
+    "Cylindrical_Green_Liquid"
+  ]
+}

@@ -1,0 +1,14 @@
+protocol=train on train; lock all checkpoints on val; evaluate test only after validation phase completes
+purpose=strict single-factor component ablation of Uniform Fusion
+backbone=resnet50
+main_method=Uniform_Fusion reused from locked n=5 evidence
+ablation_methods=Uniform_NoCounterfactual Uniform_NoGuard Uniform_C5Only
+common_constraint=plain_innovation_use_learned_router=false and route_weight=0
+seeds=930163947 1786430941 553800223
+repeats=1 2 3
+new_training_groups=9
+batch_size=32
+patience=25
+epochs=180
+locked_main_sha256=d1ec51b1e44152db52def599d2185d02318786de2db1177bff3158b26ce1782d
+test_list_sha256=6c50e83f34a499243c3c103137584981f66ac258d9a7abe09c8131ec484276c6

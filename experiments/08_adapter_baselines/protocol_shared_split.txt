@@ -1,0 +1,9 @@
+Dataset=DvXray
+Backbone=ResNet50
+Train=train split
+Checkpoint selection=best validation mAP
+Final evaluation=locked Test split once
+Test samples=1600
+Test list SHA256=6c50e83f34a499243c3c103137584981f66ac258d9a7abe09c8131ec484276c6
+Seeds=930163947,1786430941,553800223
+Weak classes=Knife,Scissors,Lighter,Razor_blade

@@ -1,0 +1,11 @@
+protocol=train on train; select checkpoints on val; lock all variants; report test once
+final_method=Final_NoAnchor; fixed before this ablation
+purpose=final-centered component attribution; no further structure search
+plain_checkpoints=./runs_p9_plain_valtest_2seeds/run_20260828_p9_plain_valtest_2seeds_rerun/resnet50
+final_checkpoints=./runs_p9_component_valtest/run_20260828_p9_component_valtest_3seeds_final/resnet50
+train_list=annotations/DvXray_train.txt
+val_list=annotations/DvXray_val.txt
+test_list=annotations/DvXray_test.txt
+seeds=930163947 1786430941 553800223
+methods=Plain_BCE Final_NoAnchor Final_NoAnchor_NoCounterfactualExperts Final_NoAnchor_NoRouter Final_NoAnchor_NoGuardLoss Final_NoAnchor_SingleScaleC5
+new_training_groups=12

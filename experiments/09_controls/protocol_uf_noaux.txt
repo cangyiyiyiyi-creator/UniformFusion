@@ -1,0 +1,5 @@
+method=UF_NoAux
+seeds=930163947 1786430941 553800223
+only_change=plain_innovation_aux_weight: 0.03 -> 0
+selection=finish all Val runs, lock configuration, then evaluate Test once
+reference=Uniform Fusion with Top-K=8, uniform expert fusion, Guard=0.10, SingleLoss=0.02

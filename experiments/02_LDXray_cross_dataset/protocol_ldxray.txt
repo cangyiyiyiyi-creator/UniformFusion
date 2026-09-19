@@ -1,0 +1,10 @@
+protocol=train on train; select best checkpoint on val; test once after all validation runs
+purpose=LDXray step-matched Uniform Fusion confirmation
+methods=Plain_BCE Uniform_Fusion_StepMatched
+seeds=930163947 1786430941 553800223
+innovation_warmup_epochs=3
+innovation_ramp_epochs=5
+innovation_gamma_init=0.003
+innovation_gamma_max=0.02
+innovation_guard_weight=0.15
+innovation_aux_weight=0.03

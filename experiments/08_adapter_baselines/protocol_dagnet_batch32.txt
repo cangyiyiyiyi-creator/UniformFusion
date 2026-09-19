@@ -1,0 +1,7 @@
+method=DAGNet_OfficialArchitecture
+physical_batch_size=16
+gradient_accumulation=2
+effective_batch_size=32
+input_size=256
+selection=all_Val_then_locked_Test
+replaces_batch16_only_if_complete=true

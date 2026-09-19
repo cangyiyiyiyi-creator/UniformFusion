@@ -1,0 +1,7 @@
+protocol=locked best checkpoints selected only by validation mAP; test inference only
+method=Uniform Fusion (Final_NoAnchor_NoRouter)
+view_modes=paired ol_only sd_only mismatched
+mismatch_policy=cyclic_half_split_b_view
+seeds=930163947 1786430941 553800223 207027553 1716854429
+test_sha256=6c50e83f34a499243c3c103137584981f66ac258d9a7abe09c8131ec484276c6
+efficiency=actual Plain-BCE/Uniform checkpoints; AMP FP16; batch 1 and 32

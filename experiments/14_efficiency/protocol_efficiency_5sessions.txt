@@ -1,0 +1,1 @@
+scopes=model_forward_amp,dataloader_h2d_model; sessions=5; repeats=100; batches=1,16

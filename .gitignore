@@ -1,0 +1,35 @@
+# ---- 运行产物（不入库）----
+/core/annotations/
+/annotations/
+/runs_*/
+/core/runs_*/
+experiments/**/runs_*/
+*.log
+master.log
+
+# ---- 训练产物 / 权重 ----
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.onnx
+*.engine
+
+# ---- relink 备份 ----
+*.orig
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

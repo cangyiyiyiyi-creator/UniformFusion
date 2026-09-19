@@ -58,6 +58,7 @@ UniformFusion_code_submission/
 ├── README.md                     本文件（含完整复现步骤）
 ├── main.sh                       ★ 一键入口：setup / relink / preflight / train / eval / status
 ├── LICENSE                       MIT License（`third_party/` 快照除外，见 §13）
+├── CITATION.cff                  引用元数据（GitHub「Cite this repository」按钮由此生成）
 ├── environment_versions.txt      论文运行环境记录（conda 环境 v2b384_env）
 ├── requirements.txt              核心依赖清单（完整 81 包见 pip_freeze.txt）
 ├── pip_freeze.txt                环境完整 pip freeze（81 个包）
@@ -504,7 +505,7 @@ sha256sum data_splits/DvXray/DvXray_train.txt data_splits/DvXray/DvXray_val.txt 
 sha256sum -c SHA256SUMS.restored.txt
 ```
 
-发布后新增、不在冻结清单内的文件：`main.sh`、`LICENSE`、`requirements.txt`、
+发布后新增、不在冻结清单内的文件：`main.sh`、`LICENSE`、`CITATION.cff`、`requirements.txt`、
 `environment_versions.txt`、`.gitignore`、`SHA256SUMS.restored.txt`。
 
 ---
@@ -548,8 +549,31 @@ sha256sum -c SHA256SUMS.restored.txt
 
 ## 13. 引用与许可
 
+- **代码仓库**：https://github.com/cangyiyiyiyi-creator/UniformFusion
+- **已发布版本**：**v1.0-paper**（附注 tag）。要获取与论文一致的锁定快照：
+
+  ```bash
+  git clone --branch v1.0-paper https://github.com/cangyiyiyiyi-creator/UniformFusion.git
+  ```
+
+- **引用元数据**：`CITATION.cff` —— GitHub 仓库页右上角的「Cite this repository」按钮即由此生成。
+
 对应稿件：*Class-Conditioned Multi-Scale Regional Learning for Dual-View X-Ray Multi-Label Recognition*
-（`UniformFusion_submission_revision_20260919_tablebold.pdf`）。正式发表后请补充 BibTeX 引用信息。
+（`UniformFusion_submission_revision_20260919_tablebold.pdf`）。正式发表后请补充期刊/会议与 DOI。
+
+软件条目（可在论文与 README 中直接引用）：
+
+```bibtex
+@software{uniformfusion2026,
+  title     = {UniformFusion: Class-Conditioned Multi-Scale Regional Learning
+               for Dual-View X-Ray Multi-Label Recognition},
+  author    = {代程宇},
+  year      = {2026},
+  version   = {v1.0-paper},
+  license   = {MIT},
+  url       = {https://github.com/cangyiyiyiyi-creator/UniformFusion}
+}
+```
 
 - 本仓库采用 **MIT License**（见 `LICENSE`），版权归 2026 代程宇；覆盖 `core/`、`experiments/`、`main.sh`。
 - `experiments/08_adapter_baselines/third_party/` 为上游官方实现的原样快照（DAGNet、ML-Decoder），

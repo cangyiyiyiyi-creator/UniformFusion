@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper and the software entry below."
+title: >-
+  UniformFusion: Class-Conditioned Multi-Scale Regional Learning for Dual-View
+  X-Ray Multi-Label Recognition
+type: software
+authors:
+  - family-names: 代
+    given-names: 程宇
+    email: cangyiyiyiyi@gmail.com
+# TODO: 论文正式发表后补充其余作者、期刊/会议与 DOI，并在此处或下方加入
+#       preferred-citation 指向正式论文条目。
+repository-code: "https://github.com/cangyiyiyiyi-creator/UniformFusion"
+url: "https://github.com/cangyiyiyiyi-creator/UniformFusion"
+abstract: >-
+  Official implementation and reproduction code for dual-view (OL / SD) X-ray
+  multi-label recognition. The main method (Uniform Fusion) combines a
+  ResNet-50 dual-branch backbone with C4/C5 multi-scale class-query Top-K
+  regional evidence, counterfactual experts and uniform logit aggregation.
+  The repository provides the locked sources, data split manifests,
+  per-experiment runners and a one-command reproduction entry point
+  (bash main.sh) enforcing the paper protocol: train on train, select the
+  checkpoint on validation, and evaluate the test set exactly once.
+license: MIT
+version: v1.0-paper
+date-released: "2026-09-19"
+keywords:
+  - x-ray
+  - multi-label recognition
+  - dual-view
+  - class-conditioned
+  - multi-scale regional learning
+  - convnextv2
+  - resnet50
+  - pytorch
+  - reproducibility
